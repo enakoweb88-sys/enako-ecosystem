@@ -1,0 +1,443 @@
+import React, { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { useLang } from '../lang-context';
+import {
+  FaArrowRight,
+  FaBars,
+  FaCheck,
+  FaClock,
+  FaEnvelope,
+  FaFileAlt,
+  FaGlobe,
+  FaIdCard,
+  FaLock,
+  FaPhoneAlt,
+  FaShieldAlt,
+  FaTimes,
+  FaUserCheck,
+} from 'react-icons/fa';
+
+const NAV_LABELS = {
+  en: ['Home', 'About', 'Why KYC', 'Process', 'Security', 'FAQ', 'Contact'],
+  fr: ['Accueil', 'À propos', 'Pourquoi KYC', 'Processus', 'Sécurité', 'FAQ', 'Contact'],
+};
+const NAV_PATHS = ['/', '/about', '/why-kyc', '/process', '/security', '/faq', '/contact'];
+
+const MARKETING_TEXTS = {
+  en: {
+    getStarted: 'Get Started',
+    pages: 'Pages',
+    contact: 'Contact',
+    footerDesc: 'Secure, compliant, and professional KYC onboarding for individuals and companies.',
+    overview: 'Overview',
+    startSecurely: 'Start securely',
+    readyKYC: 'Ready to complete your KYC?',
+    messageSent: 'Message Sent',
+    messageSentDesc: 'Thank you. A member of our compliance team will respond within 1 business day.',
+    sendAnother: 'Send Another Message',
+    sendMessage: 'Send Message',
+    sending: 'Sending...',
+    fullName: 'Full Name',
+    emailAddress: 'Email Address',
+    subject: 'Subject',
+    message: 'Message',
+    namePlaceholder: 'Your full name',
+    emailPlaceholder: 'you@company.com',
+    subjectPlaceholder: 'e.g. KYC form query',
+    messagePlaceholder: 'Describe your query in detail...',
+    officeHours: 'Mon - Fri, 9am - 5pm GMT',
+    secureWorkspace: 'Secure onboarding workspace',
+    secureWorkspaceDesc: 'Built around trust, document clarity, and compliance review.',
+  },
+  fr: {
+    getStarted: 'Commencer',
+    pages: 'Pages',
+    contact: 'Contact',
+    footerDesc: 'Intégration KYC sécurisée, conforme et professionnelle pour les particuliers et les entreprises.',
+    overview: 'Aperçu',
+    startSecurely: 'Commencer en toute sécurité',
+    readyKYC: 'Prêt à compléter votre KYC ?',
+    messageSent: 'Message Envoyé',
+    messageSentDesc: 'Merci. Un membre de notre équipe de conformité répondra dans un délai d\'un jour ouvrable.',
+    sendAnother: 'Envoyer un Autre Message',
+    sendMessage: 'Envoyer le Message',
+    sending: 'Envoi en cours...',
+    fullName: 'Nom Complet',
+    emailAddress: 'Adresse Email',
+    subject: 'Sujet',
+    message: 'Message',
+    namePlaceholder: 'Votre nom complet',
+    emailPlaceholder: 'vous@societe.com',
+    subjectPlaceholder: 'ex. Question sur le formulaire KYC',
+    messagePlaceholder: 'Décrivez votre demande en détail...',
+    officeHours: 'Lun - Ven, 9h - 17h GMT',
+    secureWorkspace: 'Espace de travail sécurisé',
+    secureWorkspaceDesc: 'Conçu autour de la confiance, la clarté des documents et la révision de conformité.',
+  },
+};
+const contactPhone = '+237 6 70 67 12 49';
+const websiteUrl = 'https://www.enako.cm';
+const websiteLabel = 'www.enako.cm';
+
+export function MarketingHeader() {
+  const location = useLocation();
+  const [open, setOpen] = useState(false);
+  const { lang } = useLang();
+  const labels = NAV_LABELS[lang];
+  const mt = MARKETING_TEXTS[lang];
+  const navItems = NAV_PATHS.map((path, i) => ({ label: labels[i], path }));
+
+  return (
+    <header className="relative z-30 bg-[#030b21] border-b border-white/10">
+      <div className="max-w-7xl mx-auto px-5 sm:px-8 py-5 flex items-center justify-between">
+        <Link to="/" className="flex items-center gap-3">
+          <img src="/logo.png" alt="ENAKO Logo" className="h-28 w-auto object-contain" />
+        </Link>
+
+        <nav className="hidden lg:flex items-center gap-7 text-sm font-semibold text-white/70">
+          {navItems.map(item => (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`relative hover:text-white transition-colors ${location.pathname === item.path ? 'text-white' : ''}`}
+            >
+              {item.label}
+              {location.pathname === item.path && <span className="absolute -bottom-4 left-0 right-0 h-0.5 rounded-full bg-blue-300" />}
+            </Link>
+          ))}
+        </nav>
+
+        <Link to="/register" className="hidden sm:inline-flex rounded-xl bg-white text-[#003061] px-5 py-2.5 text-sm font-extrabold hover:bg-blue-50">
+          {mt.getStarted}
+        </Link>
+
+        <button
+          type="button"
+          onClick={() => setOpen(value => !value)}
+          className="lg:hidden h-11 w-11 rounded-xl border border-white/10 bg-white/[0.04] text-white flex items-center justify-center"
+          aria-label="Toggle navigation"
+        >
+          {open ? <FaTimes /> : <FaBars />}
+        </button>
+      </div>
+      {open && (
+        <nav className="lg:hidden px-5 sm:px-8 pb-5">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 grid gap-1">
+            {navItems.map(item => (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={() => setOpen(false)}
+                className={`rounded-xl px-4 py-3 text-sm font-bold ${location.pathname === item.path ? 'bg-white text-[#003061]' : 'text-white/80 hover:bg-white/10'}`}
+              >
+                {item.label}
+              </Link>
+            ))}
+            <Link to="/register" onClick={() => setOpen(false)} className="rounded-xl bg-white text-[#003061] px-4 py-3 text-sm font-extrabold mt-1">
+              {mt.getStarted}
+            </Link>
+          </div>
+        </nav>
+      )}
+    </header>
+  );
+}
+
+export function MarketingFooter() {
+  const { lang } = useLang();
+  const mt = MARKETING_TEXTS[lang];
+  const labels = NAV_LABELS[lang];
+  const navItems = NAV_PATHS.map((path, i) => ({ label: labels[i], path }));
+
+  return (
+    <footer className="bg-[#030b21] text-slate-400 py-12 px-5 sm:px-8">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-[1.2fr_1fr_1fr] gap-10">
+        <div>
+          <div className="flex items-center gap-3 mb-4">
+            <img src="/logo.png" alt="ENAKO Logo" className="h-28 w-auto object-contain" />
+          </div>
+          <p className="text-sm leading-7 max-w-md">{mt.footerDesc}</p>
+        </div>
+        <div>
+          <div className="text-white text-xs font-extrabold uppercase tracking-widest mb-4">{mt.pages}</div>
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            {navItems.map(item => <Link key={item.path} to={item.path} className="hover:text-white">{item.label}</Link>)}
+          </div>
+        </div>
+        <div>
+          <div className="text-white text-xs font-extrabold uppercase tracking-widest mb-4">{mt.contact}</div>
+          <div className="flex flex-col gap-2 text-sm">
+            <span>enakocompanyltd@gmail.com</span>
+            <a href={`tel:${contactPhone.replace(/\s/g, '')}`} className="hover:text-white">{contactPhone}</a>
+            <a href={websiteUrl} target="_blank" rel="noreferrer" className="hover:text-white">{websiteLabel}</a>
+            <Link to="/compliance-policy" className="hover:text-white">Compliance Policy</Link>
+            <Link to="/terms" className="hover:text-white">Terms of Service</Link>
+            <span>© 2026 ENAKO Financial.</span>
+          </div>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+function PageShell({ eyebrow, title, description, children }: {
+  eyebrow: string;
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="min-h-screen bg-[#f7faff] text-slate-950">
+      <MarketingHeader />
+      <section className="relative overflow-hidden bg-[#030b21] text-white">
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(3,11,33,0.96)_0%,rgba(3,11,33,0.86)_48%,rgba(3,11,33,0.55)_100%),url('/download.jpg')] bg-cover bg-center" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_20%,rgba(0,48,97,0.75),transparent_34%),linear-gradient(180deg,rgba(7,20,46,0.78)_0%,rgba(3,11,33,0.95)_100%)]" />
+        <div className="absolute inset-0 opacity-[0.18]" style={{ backgroundImage: 'radial-gradient(circle, rgba(110,163,255,0.45) 1px, transparent 1px)', backgroundSize: '48px 48px' }} />
+        <div className="relative max-w-7xl mx-auto px-5 sm:px-8 py-20 sm:py-28">
+          <motion.div initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="max-w-3xl">
+            <div className="inline-flex rounded-full border border-blue-300/25 bg-[#003061]/35 px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-blue-100 mb-5">{eyebrow}</div>
+            <h1 className="text-4xl sm:text-6xl font-extrabold tracking-[-0.04em] leading-tight mb-5">{title}</h1>
+            <p className="text-lg text-slate-300 leading-8">{description}</p>
+          </motion.div>
+        </div>
+      </section>
+      <main className="relative z-10 -mt-10 mx-4 sm:mx-8 rounded-t-[2rem] bg-[#f7faff] shadow-[0_-18px_70px_rgba(15,23,42,0.16)]">
+        {children}
+      </main>
+      <MarketingFooter />
+    </div>
+  );
+}
+
+const pageData = {
+  about: {
+    eyebrow: 'About ENAKO',
+    title: 'A secure client onboarding layer for modern finance.',
+    description: 'ENAKO helps clients submit identity, business, compliance, and document information through a polished and trustworthy KYC experience.',
+    body: [
+      'ENAKO KYC Onboarding is built for clients who need a secure, professional, and understandable way to submit verification information. Instead of forcing applicants through a generic form, the experience separates company and individual registration so every user sees only what is relevant to their profile.',
+      'The platform focuses on clarity at every step: users can see progress, understand why documents are needed, and move through the journey without feeling lost. This makes compliance feel less like paperwork and more like a guided financial onboarding experience.',
+    ],
+    cards: [
+      { icon: FaShieldAlt, title: 'Compliance-first', text: 'Designed around identity checks, AML review, and clear audit trails.' },
+      { icon: FaUserCheck, title: 'Client-friendly', text: 'Guided steps, plain language, and a smooth registration journey.' },
+      { icon: FaFileAlt, title: 'Document-ready', text: 'Structured uploads for company and individual verification requirements.' },
+    ],
+  },
+  why: {
+    eyebrow: 'Why KYC',
+    title: 'KYC protects clients, partners, and the platform.',
+    description: 'Identity verification helps prevent fraud, support regulatory obligations, and build trust before financial services are activated.',
+    body: [
+      'KYC is the foundation of safe financial relationships. It helps confirm that clients are who they say they are, that companies are properly represented, and that funds or business activity can be reviewed responsibly before services begin.',
+      'For ENAKO, KYC also protects genuine users. A strong onboarding process reduces impersonation, document abuse, ownership confusion, and preventable compliance delays.',
+    ],
+    cards: [
+      { icon: FaShieldAlt, title: 'Prevent Fraud', text: 'Detect false identities, suspicious applications, and incomplete ownership data.' },
+      { icon: FaFileAlt, title: 'Regulatory Compliance', text: 'Collect the information needed for AML, CTF, sanctions, and risk review.' },
+      { icon: FaLock, title: 'Protect Data', text: 'Keep submitted information private, encrypted, and handled responsibly.' },
+    ],
+  },
+  process: {
+    eyebrow: 'The Process',
+    title: 'A guided path from registration to approval.',
+    description: 'The onboarding flow is split into clear steps so every applicant knows what is required and what happens next.',
+    body: [
+      'The process begins with account type selection. Companies complete corporate information, ownership, AML, banking, documents, and declaration sections. Individuals complete a simplified path for personal identity, employment, banking, uploads, and declaration.',
+      'Each step is intentionally focused. Users complete one stage at a time, save draft progress locally, review validation messages, and submit a cleaner application for compliance review.',
+    ],
+    cards: [
+      { icon: FaIdCard, title: '1. Choose Profile', text: 'Select company or individual registration so the right form appears.' },
+      { icon: FaFileAlt, title: '2. Submit Details', text: 'Complete the multi-step KYC form and upload supporting documents.' },
+      { icon: FaCheck, title: '3. Compliance Review', text: 'The ENAKO team reviews the application and confirms onboarding status.' },
+    ],
+  },
+  security: {
+    eyebrow: 'Security',
+    title: 'Built to feel safe before users share sensitive information.',
+    description: 'The interface emphasizes privacy, clarity, and controlled document collection across the full onboarding journey.',
+    body: [
+      'Security is not only a technical promise; it is also a design responsibility. ENAKO uses visible trust signals, clear copy, and calm interface patterns so users understand that sensitive data is being handled carefully.',
+      'The onboarding journey avoids clutter, highlights secure document handling, and keeps applicants oriented through progress indicators and review states.',
+    ],
+    cards: [
+      { icon: FaLock, title: 'Encrypted Journey', text: 'Every step is presented as a secure compliance workflow.' },
+      { icon: FaShieldAlt, title: 'Trust Signals', text: 'Clear messaging helps users understand why information is requested.' },
+      { icon: FaGlobe, title: 'Global Standards', text: 'The flow aligns with global KYC and AML onboarding expectations.' },
+    ],
+  },
+  faq: {
+    eyebrow: 'FAQ',
+    title: 'Answers before you begin onboarding.',
+    description: 'Quick guidance for common questions about documents, review timing, privacy, and account type selection.',
+    body: [
+      'Before starting, applicants should prepare accurate identity details and any supporting documents that match their registration type. Companies may need corporate and ownership documents, while individuals usually need identity, proof of address, and selfie verification.',
+      'If an application is incomplete, the compliance team may request corrections or additional documents. Complete and accurate submissions are reviewed faster.',
+    ],
+    cards: [
+      { icon: FaClock, title: 'How long does review take?', text: 'Complete applications are typically reviewed within 2-5 business days.' },
+      { icon: FaFileAlt, title: 'Which documents are needed?', text: 'Requirements depend on whether you register as a company or an individual.' },
+      { icon: FaLock, title: 'Is my data private?', text: 'Yes. Submitted information is used for compliance review and protected carefully.' },
+    ],
+  },
+};
+
+export function InfoPage({ type }: { type: keyof typeof pageData }) {
+  const page = pageData[type];
+  const { lang } = useLang();
+  const mt = MARKETING_TEXTS[lang];
+  return (
+    <PageShell eyebrow={page.eyebrow} title={page.title} description={page.description}>
+      <section className="max-w-7xl mx-auto px-5 sm:px-8 py-16 sm:py-20">
+        <div className="grid grid-cols-1 lg:grid-cols-[0.95fr_1.05fr] gap-8 mb-10">
+          <div className="rounded-[2rem] bg-white border border-[#d9e5f5] p-7 sm:p-9 shadow-[0_18px_55px_rgba(15,23,42,0.06)]">
+            <div className="text-xs font-extrabold uppercase tracking-widest text-[#003061] mb-4">{mt.overview}</div>
+            <div className="space-y-5 text-slate-600 leading-8">
+              {page.body.map(paragraph => <p key={paragraph}>{paragraph}</p>)}
+            </div>
+          </div>
+          <div className="rounded-[2rem] bg-[#030b21] min-h-72 relative overflow-hidden border border-[#d9e5f5] shadow-[0_18px_55px_rgba(15,23,42,0.08)]">
+            <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(3,11,33,0.45),rgba(0,48,97,0.85)),url('/download.jpg')] bg-cover bg-center" />
+            <div className="absolute inset-0 opacity-30" style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.35) 1px, transparent 1px)', backgroundSize: '34px 34px' }} />
+            <div className="absolute bottom-6 left-6 right-6 rounded-2xl border border-white/10 bg-white/10 backdrop-blur-xl p-5 text-white">
+              <div className="text-sm font-extrabold mb-1">{mt.secureWorkspace}</div>
+              <div className="text-xs text-blue-100">{mt.secureWorkspaceDesc}</div>
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {page.cards.map((card, index) => (
+            <motion.div
+              key={card.title}
+              initial={{ opacity: 0, y: 18 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.45, delay: index * 0.08 }}
+              className="bg-white border border-[#d9e5f5] rounded-3xl p-7 shadow-[0_18px_55px_rgba(15,23,42,0.06)]"
+            >
+              <div className="h-14 w-14 rounded-2xl bg-[#003061]/8 text-[#003061] flex items-center justify-center mb-8">
+                <card.icon className="text-2xl" />
+              </div>
+              <h2 className="text-xl font-extrabold text-[#07112b] mb-3">{card.title}</h2>
+              <p className="text-sm text-slate-600 leading-7">{card.text}</p>
+            </motion.div>
+          ))}
+        </div>
+
+        <div className="mt-10 rounded-[2rem] bg-[#030b21] text-white p-8 sm:p-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 overflow-hidden relative">
+          <div className="absolute right-0 top-0 h-56 w-56 rounded-full bg-[#003061]/50 blur-3xl translate-x-1/3 -translate-y-1/3" />
+          <div className="relative">
+            <div className="text-xs font-extrabold uppercase tracking-widest text-blue-200 mb-2">{mt.startSecurely}</div>
+            <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight">{mt.readyKYC}</h3>
+          </div>
+          <Link to="/register" className="relative inline-flex items-center gap-3 rounded-xl bg-white text-[#003061] px-6 py-4 font-extrabold hover:bg-blue-50">
+            {mt.getStarted} <FaArrowRight />
+          </Link>
+        </div>
+      </section>
+    </PageShell>
+  );
+}
+
+export function MarketingContact() {
+  const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
+  const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const { lang } = useLang();
+  const mt = MARKETING_TEXTS[lang];
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const defaultHost = window.location.hostname.replace(/^(www\.|app\.|os\.|client\.|dashboard\.)/, '');
+      const url = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'https://api.enakoos.com/api/v1' : `https://api.${defaultHost}/api/v1`);
+      const res = await fetch(`${url}/tickets/contact`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form)
+      });
+      if (!res.ok) throw new Error('Failed to send message');
+      setSubmitted(true);
+      setForm({ name: '', email: '', subject: '', message: '' });
+    } catch (error) {
+      console.error(error);
+      alert('Error sending message. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const contactItems = [
+    { icon: FaEnvelope, label: lang === 'en' ? 'Email' : 'Email', value: 'enakocompanyltd@gmail.com' },
+    { icon: FaPhoneAlt, label: lang === 'en' ? 'Phone' : 'Téléphone', value: contactPhone },
+    { icon: FaGlobe, label: lang === 'en' ? 'Website' : 'Site web', value: websiteLabel },
+    { icon: FaClock, label: lang === 'en' ? 'Office Hours' : 'Heures d\'ouverture', value: mt.officeHours },
+  ];
+
+  return (
+    <PageShell
+      eyebrow={lang === 'en' ? 'Contact' : 'Contact'}
+      title={lang === 'en' ? 'Talk to the ENAKO onboarding team.' : 'Parlez à l\'équipe d\'intégration ENAKO.'}
+      description={lang === 'en' ? 'For KYC, compliance, document, and account registration questions, send us a message and our team will respond.' : 'Pour les questions KYC, conformité, documents et inscription de compte, envoyez-nous un message et notre équipe répondra.'}
+    >
+      <section className="max-w-7xl mx-auto px-5 sm:px-8 py-16 sm:py-20 grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr] gap-8">
+        <div className="space-y-5">
+          {contactItems.map(item => (
+            <div key={item.label} className="bg-white border border-[#d9e5f5] rounded-3xl p-6 flex items-center gap-5 shadow-[0_18px_55px_rgba(15,23,42,0.06)]">
+              <div className="h-12 w-12 rounded-2xl bg-[#003061]/8 text-[#003061] flex items-center justify-center">
+                <item.icon />
+              </div>
+              <div>
+                <div className="text-xs font-extrabold uppercase tracking-widest text-slate-400 mb-1">{item.label}</div>
+                <div className="text-sm font-bold text-[#07112b]">{item.value}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {submitted ? (
+          <div className="bg-white border border-[#d9e5f5] rounded-[2rem] p-10 text-center shadow-[0_18px_55px_rgba(15,23,42,0.06)]">
+            <div className="mx-auto h-16 w-16 rounded-full bg-[#003061]/8 text-[#003061] flex items-center justify-center mb-5">
+              <FaCheck />
+            </div>
+            <h2 className="text-2xl font-extrabold text-[#07112b] mb-2">{mt.messageSent}</h2>
+            <p className="text-slate-500 mb-6">{mt.messageSentDesc}</p>
+            <button onClick={() => setSubmitted(false)} className="rounded-xl bg-[#003061] text-white font-extrabold px-7 py-3">{mt.sendAnother}</button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="bg-white border border-[#d9e5f5] rounded-[2rem] p-6 sm:p-8 space-y-5 shadow-[0_18px_55px_rgba(15,23,42,0.06)]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <TextInput label={mt.fullName} value={form.name} onChange={value => setForm({ ...form, name: value })} placeholder={mt.namePlaceholder} />
+              <TextInput label={mt.emailAddress} type="email" value={form.email} onChange={value => setForm({ ...form, email: value })} placeholder={mt.emailPlaceholder} />
+            </div>
+            <TextInput label={mt.subject} value={form.subject} onChange={value => setForm({ ...form, subject: value })} placeholder={mt.subjectPlaceholder} />
+            <div>
+              <label className="block text-xs font-extrabold uppercase tracking-widest text-slate-400 mb-2">{mt.message}</label>
+              <textarea required rows={5} value={form.message} onChange={e => setForm({ ...form, message: e.target.value })} placeholder={mt.messagePlaceholder} className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-[#003061] focus:ring-2 focus:ring-[#003061]/10 text-sm" />
+            </div>
+            <button disabled={loading} className="w-full rounded-xl bg-[#003061] text-white font-extrabold py-4 hover:bg-[#002347] disabled:opacity-50">
+              {loading ? mt.sending : mt.sendMessage}
+            </button>
+          </form>
+        )}
+      </section>
+    </PageShell>
+  );
+}
+
+function TextInput({ label, value, onChange, placeholder, type = 'text' }: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  type?: string;
+}) {
+  return (
+    <div>
+      <label className="block text-xs font-extrabold uppercase tracking-widest text-slate-400 mb-2">{label}</label>
+      <input required type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-[#003061] focus:ring-2 focus:ring-[#003061]/10 text-sm" />
+    </div>
+  );
+}

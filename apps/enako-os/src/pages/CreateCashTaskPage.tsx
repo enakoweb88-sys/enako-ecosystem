@@ -1,0 +1,1 @@
+export default function SeparateWorkspaceNotice() { return <section className="rounded-lg border border-slate-200 bg-white p-6"><h1 className="text-xl font-bold">Company operations</h1><p className="mt-3 text-sm text-slate-600">Personal and other business cash operations are managed in a separate application and are unavailable in ENAKO OS.</p></section>; }

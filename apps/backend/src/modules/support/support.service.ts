@@ -1,0 +1,72 @@
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { JwtUser } from '../../common/current-user.decorator';
+
+@Injectable()
+export class SupportService {
+  constructor(private prisma: PrismaService) {}
+
+  async getTickets(user: JwtUser) {
+    const isAdmin = ['CEO', 'MANAGER'].includes(user.role);
+    const whereClause = isAdmin ? {} : { ownerId: user.sub };
+
+    const items = await this.prisma.supportTicket.findMany({ 
+      where: whereClause,
+      orderBy: { createdAt: 'desc' },
+      include: { replies: { orderBy: { createdAt: 'asc' } } }
+    });
+    
+    return {
+      counts: {
+        new: items.filter(t => t.status === 'New').length,
+        inProgress: items.filter(t => t.status === 'In Progress').length,
+        resolved: items.filter(t => t.status === 'Resolved').length,
+        escalated: items.filter(t => t.status === 'Escalated').length,
+      },
+      items
+    };
+  }
+
+  async createTicket(data: { customer: string; email: string; subject: string; description: string }, user: JwtUser) {
+    return this.prisma.supportTicket.create({
+      data: {
+        ownerId: user.sub,
+        customer: data.customer,
+        clientEmail: data.email,
+        subject: data.subject,
+        description: data.description,
+        status: 'New'
+      }
+    });
+  }
+
+  async addReply(ticketId: string, message: string, user: JwtUser) {
+    if (!message?.trim() || message.length > 10000) throw new BadRequestException('Reply must contain at most 10000 characters');
+    const isAdmin = ['CEO', 'MANAGER'].includes(user.role);
+    const ticket = await this.prisma.supportTicket.findFirst({ where: { id: ticketId, ...(isAdmin ? {} : { ownerId: user.sub }) } });
+    if (!ticket) throw new NotFoundException('Ticket not found');
+    return this.prisma.$transaction(async tx => {
+    const reply = await tx.supportTicketReply.create({
+      data: {
+        ticketId,
+        message,
+        isAdmin
+      }
+    });
+
+    if (isAdmin) {
+      await tx.supportTicket.update({
+        where: { id: ticketId },
+        data: { status: 'Resolved' } // Auto resolve on admin reply for simplicity
+      });
+    } else {
+      await tx.supportTicket.update({
+        where: { id: ticketId },
+        data: { status: 'New' } // Shift back to new for admin review
+      });
+    }
+
+    return reply;
+    });
+  }
+}

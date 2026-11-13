@@ -1,0 +1,131 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { NotificationType } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { MailService } from '../mail/mail.service';
+
+@Injectable()
+export class NotificationsService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mailService: MailService,
+  ) {}
+
+  findAll(userId: string) {
+    return this.prisma.notification.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+  }
+
+  async markRead(id: string, userId: string) {
+    await this.prisma.notification.updateMany({
+      where: { id, userId, readAt: null }, data: { readAt: new Date() },
+    });
+    const notification = await this.prisma.notification.findFirst({ where: { id, userId } });
+    if (!notification) throw new NotFoundException('Notification not found');
+    return notification;
+  }
+
+  async markAllRead(userId: string) {
+    return this.prisma.notification.updateMany({
+      where: { userId, readAt: null },
+      data: { readAt: new Date() },
+    });
+  }
+
+  async create(data: {
+    userId: string;
+    title: string;
+    body: string;
+    type?: NotificationType;
+    link?: string;
+  }) {
+    const notif = await this.prisma.notification.create({
+      data: {
+        userId: data.userId,
+        title: data.title,
+        body: data.body,
+        type: data.type ?? NotificationType.INFO,
+        link: data.link,
+      },
+    });
+
+    // Send email alert to employee's linked account email if user has not disabled it
+    const recipient = await this.prisma.user.findUnique({
+      where: { id: data.userId },
+      select: {
+        email: true,
+        preference: { select: { emailNotif: true } },
+      },
+    });
+
+    const emailAllowed = recipient?.preference?.emailNotif !== false;
+    if (recipient?.email && emailAllowed) {
+      this.mailService
+        .sendNotificationAlert(recipient.email, data.title, data.body, data.link)
+        .catch(() => {});
+    }
+
+    return notif;
+  }
+
+  async createForAll(data: {
+    title: string;
+    body: string;
+    type?: NotificationType;
+    link?: string;
+    excludeUserId?: string;
+  }) {
+    const users = await this.prisma.user.findMany({
+      where: {
+        status: 'ACTIVE',
+        ...(data.excludeUserId ? { id: { not: data.excludeUserId } } : {}),
+      },
+      select: {
+        id: true,
+        email: true,
+        preference: { select: { emailNotif: true } },
+      },
+    });
+
+    if (!users.length) return;
+
+    await this.prisma.notification.createMany({
+      data: users.map((u) => ({
+        userId: u.id,
+        title: data.title,
+        body: data.body,
+        type: data.type ?? NotificationType.INFO,
+        link: data.link,
+      })),
+    });
+
+    // Dispatch email alert to active employees who have email notifications enabled
+    for (const u of users) {
+      const emailAllowed = u.preference?.emailNotif !== false;
+      if (u.email && emailAllowed) {
+        this.mailService
+          .sendNotificationAlert(u.email, data.title, data.body, data.link)
+          .catch(() => {});
+      }
+    }
+  }
+
+  async deleteRead(userId: string) {
+    return this.prisma.notification.deleteMany({
+      // Keep an unsent report email durable even if the in-app alert was read.
+      where: {
+        userId,
+        readAt: { not: null },
+        OR: [{ emailDelivery: null }, { emailDelivery: { status: { in: ['SENT', 'SKIPPED'] } } }],
+      },
+    });
+  }
+
+  getUnreadCount(userId: string) {
+    return this.prisma.notification.count({
+      where: { userId, readAt: null },
+    });
+  }
+}

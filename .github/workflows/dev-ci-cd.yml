@@ -1,0 +1,150 @@
+name: Development CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - dev
+      - develop
+      - main
+  pull_request:
+    branches:
+      - dev
+      - develop
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dev-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # -----------------------------------------------------------
+  # 1. Detect Changes (Selective testing based on changed files)
+  # -----------------------------------------------------------
+  detect-changes:
+    name: Change Detection
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      enako-os: ${{ steps.filter.outputs.enako-os }}
+      cash: ${{ steps.filter.outputs.cash }}
+      kyc: ${{ steps.filter.outputs.kyc }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Evaluate Path Changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'apps/backend/**'
+            enako-os:
+              - 'apps/enako-os/**'
+            cash:
+              - 'apps/cash/**'
+            kyc:
+              - 'apps/kyc/**'
+
+  # -----------------------------------------------------------
+  # 2. Backend CI (NestJS + Prisma)
+  # -----------------------------------------------------------
+  ci-backend:
+    name: Backend CI (API)
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.backend == 'true' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/backend
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: 'apps/backend/package-lock.json'
+
+      - name: Install Dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Run Linter
+        run: npm run lint --if-present
+
+      - name: Build Backend Service
+        run: npm run build
+
+  # -----------------------------------------------------------
+  # 3. Frontends Matrix CI (Enako OS, Cash, KYC)
+  # -----------------------------------------------------------
+  ci-frontends:
+    name: Frontend CI (${{ matrix.app }})
+    needs: detect-changes
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app: enako-os
+            path: apps/enako-os
+          - app: cash
+            path: apps/cash
+          - app: kyc
+            path: apps/kyc
+    if: ${{ needs.detect-changes.outputs[matrix.app] == 'true' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ matrix.path }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: '${{ matrix.path }}/package-lock.json'
+
+      - name: Install Dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Run Linter / Typecheck
+        run: npm run lint --if-present
+
+      - name: Build Frontend Application
+        run: npm run build
+
+  # -----------------------------------------------------------
+  # 4. Pipeline Status & Dev Deployment Trigger
+  # -----------------------------------------------------------
+  pipeline-summary:
+    name: Pipeline Summary & Dev Verification
+    needs: [ci-backend, ci-frontends]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Overall Status
+        run: |
+          BACKEND_STATUS="${{ needs.ci-backend.result }}"
+          FRONTENDS_STATUS="${{ needs.ci-frontends.result }}"
+          
+          echo "Backend CI Status: $BACKEND_STATUS"
+          echo "Frontends CI Status: $FRONTENDS_STATUS"
+          
+          if [[ "$BACKEND_STATUS" == "failure" || "$FRONTENDS_STATUS" == "failure" ]]; then
+            echo "CI pipeline failed on one or more services."
+            exit 1
+          fi
+          
+          echo "All targeted services compiled, linted, and verified successfully!"

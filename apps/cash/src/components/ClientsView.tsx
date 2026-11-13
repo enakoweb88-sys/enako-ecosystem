@@ -1,0 +1,467 @@
+import React, { useState, useMemo } from 'react';
+import { 
+  Plus, 
+  Search, 
+  MapPin, 
+  Calendar, 
+  Tag, 
+  Banknote, 
+  Check, 
+  ChevronDown,
+  Filter,
+  X,
+  Phone,
+  Mail,
+  RotateCw,
+  ShieldCheck,
+  CheckCircle2,
+  Briefcase,
+  Building
+} from 'lucide-react';
+import { Client, FilterOptions } from '../types';
+import { formatXAF, formatCommaNumber, cleanCommas } from '../data/mockData';
+
+interface ClientsViewProps {
+  clients: Client[];
+  onSelectClientForCollection: (client: Client) => void;
+  onAddNewClient: (client: Omit<Client, 'id'>) => void;
+  onSyncKyc?: () => void;
+}
+
+export const ClientsView: React.FC<ClientsViewProps> = ({
+  clients,
+  onSelectClientForCollection,
+  onAddNewClient,
+  onSyncKyc,
+}) => {
+  const [filters, setFilters] = useState<FilterOptions>({
+    searchQuery: '',
+    region: '',
+    balanceFilter: '',
+  });
+
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newClientName, setNewClientName] = useState('');
+  const [newClientAddress, setNewClientAddress] = useState('');
+  const [newClientRegion, setNewClientRegion] = useState('Global');
+  const [newClientBalance, setNewClientBalance] = useState('0');
+  const [newClientPhone, setNewClientPhone] = useState('');
+  const [newClientEmail, setNewClientEmail] = useState('');
+
+  // Dynamically extract unique regions / countries from client directory
+  const availableRegions = useMemo(() => {
+    const set = new Set<string>();
+    clients.forEach((c) => {
+      if (c.region) set.add(c.region.trim());
+    });
+    return Array.from(set).sort();
+  }, [clients]);
+
+  // Filter clients
+  const filteredClients = useMemo(() => {
+    return clients.filter((client) => {
+      // Search query
+      if (filters.searchQuery.trim()) {
+        const q = filters.searchQuery.toLowerCase();
+        const matchesName = (client.name || '').toLowerCase().includes(q);
+        const matchesId = (client.id || '').toLowerCase().includes(q);
+        const matchesAddr = (client.address || '').toLowerCase().includes(q);
+        const matchesRegion = (client.region || '').toLowerCase().includes(q);
+        const matchesEmail = (client.email || '').toLowerCase().includes(q);
+        const matchesPhone = (client.phone || '').toLowerCase().includes(q);
+        const matchesCni = (client.idNumber || '').toLowerCase().includes(q);
+
+        if (!matchesName && !matchesId && !matchesAddr && !matchesRegion && !matchesEmail && !matchesPhone && !matchesCni) {
+          return false;
+        }
+      }
+
+      // Region filter
+      if (filters.region && (client.region || '').toLowerCase() !== filters.region.toLowerCase()) {
+        return false;
+      }
+
+      // Balance filter
+      if (filters.balanceFilter === 'high' && client.outstandingBalance < 50000) {
+        return false;
+      }
+      if (filters.balanceFilter === 'low' && (client.outstandingBalance <= 0 || client.outstandingBalance >= 50000)) {
+        return false;
+      }
+      if (filters.balanceFilter === 'zero' && client.outstandingBalance > 0) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [clients, filters]);
+
+  const handleCreateClient = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newClientName.trim() || !newClientAddress.trim()) return;
+
+    setIsSubmitting(true);
+    setTimeout(() => {
+      onAddNewClient({
+        name: newClientName.trim(),
+        address: newClientAddress.trim(),
+        region: newClientRegion.trim() || 'Global',
+        lastVisit: 'Never',
+        outstandingBalance: Number(cleanCommas(newClientBalance)) || 0,
+        phone: newClientPhone.trim() || undefined,
+        email: newClientEmail.trim() || undefined,
+      });
+
+      // Reset form
+      setNewClientName('');
+      setNewClientAddress('');
+      setNewClientRegion('Global');
+      setNewClientBalance('0');
+      setNewClientPhone('');
+      setNewClientEmail('');
+      setIsSubmitting(false);
+      setIsAddModalOpen(false);
+    }, 350);
+  };
+
+  // Helper for initials
+  const getInitials = (name: string) => {
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto flex flex-col gap-6">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 pb-4 border-b border-[#e5e5e5]">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[#1a1c1c] mb-1 flex items-center gap-3">
+            <span>Client Directory</span>
+            <span className="text-xs bg-[#e0f2fe] text-[#0369a1] border border-[#bae6fd] px-2.5 py-1 font-bold uppercase tracking-wider">
+              {filteredClients.length} Profiles
+            </span>
+          </h1>
+          <p className="text-sm text-[#5f5e5e]">
+            Manage client profiles automatically synced from approved KYC submissions and manual registrations.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+          {onSyncKyc && (
+            <button
+              onClick={onSyncKyc}
+              className="flex-1 md:flex-initial px-4 py-2.5 bg-white hover:bg-[#f2f2f2] border border-[#d6d6d6] text-[#1a1c1c] text-xs font-bold tracking-wider uppercase flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-xs"
+            >
+              <RotateCw className="w-4 h-4 text-[#0891b2]" />
+              <span>Sync Approved KYC</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex-1 md:flex-initial px-6 py-2.5 bg-[#0891b2] hover:bg-[#0e7490] text-white text-xs font-bold tracking-wider uppercase flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-sm"
+          >
+            <Plus className="w-4 h-4 stroke-[3]" />
+            <span>Add New Client</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Search and Filter Bar */}
+      <div className="bg-[#ffffff] border border-[#e5e5e5] p-3 sm:p-4 flex flex-col md:flex-row gap-3 sm:gap-4 items-center">
+        {/* Search Input */}
+        <div className="relative flex-1 w-full">
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#4a4a4a]" />
+          <input
+            type="text"
+            value={filters.searchQuery}
+            onChange={(e) => setFilters({ ...filters, searchQuery: e.target.value })}
+            placeholder="Search by name, ID, email or address..."
+            className="w-full py-2.5 pl-10 pr-8 bg-[#ffffff] border border-[#e5e5e5] focus:border-[#0891b2] focus:ring-1 focus:ring-[#0891b2] outline-none text-sm text-[#1a1c1c] placeholder:text-[#5f5e5e] transition-all"
+          />
+          {filters.searchQuery && (
+            <button
+              onClick={() => setFilters({ ...filters, searchQuery: '' })}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5f5e5e] hover:text-[#1a1c1c]"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Dropdowns */}
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 w-full md:w-auto">
+          {/* Region dropdown */}
+          <div className="relative w-full sm:w-48">
+            <select
+              value={filters.region}
+              onChange={(e) => setFilters({ ...filters, region: e.target.value })}
+              className="w-full py-2.5 pl-3.5 pr-8 bg-[#ffffff] border border-[#e5e5e5] appearance-none focus:border-[#0891b2] focus:ring-1 focus:ring-[#0891b2] outline-none text-xs sm:text-sm text-[#1a1c1c] cursor-pointer"
+            >
+              <option value="">All Locations / Countries</option>
+              {availableRegions.map((reg) => (
+                <option key={reg} value={reg}>{reg}</option>
+              ))}
+            </select>
+            <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-[#4a4a4a] pointer-events-none" />
+          </div>
+
+          {/* Balance dropdown */}
+          <div className="relative w-full sm:w-56">
+            <select
+              value={filters.balanceFilter}
+              onChange={(e) => setFilters({ ...filters, balanceFilter: e.target.value })}
+              className="w-full py-2.5 pl-3.5 pr-8 bg-[#ffffff] border border-[#e5e5e5] appearance-none focus:border-[#0891b2] focus:ring-1 focus:ring-[#0891b2] outline-none text-xs sm:text-sm text-[#1a1c1c] cursor-pointer"
+            >
+              <option value="">Balance: Any</option>
+              <option value="high">Outstanding &gt; 50k XAF</option>
+              <option value="low">Outstanding &lt; 50k XAF</option>
+              <option value="zero">No Balance (0 XAF)</option>
+            </select>
+            <Filter className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-[#4a4a4a] pointer-events-none" />
+          </div>
+        </div>
+      </div>
+
+      {/* Data List */}
+      <div className="flex flex-col border border-[#e5e5e5] bg-[#ffffff] divide-y divide-[#e5e5e5]">
+        {filteredClients.map((client) => {
+          const hasBalance = client.outstandingBalance > 0;
+          return (
+            <div
+              key={client.id}
+              className="p-4 md:p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 hover:bg-[#f3f3f3]/70 transition-colors group"
+            >
+              {/* Client Info */}
+              <div className="flex items-start gap-4 flex-1">
+                <div className="h-11 w-11 rounded-full border border-[#a5f3fc] flex items-center justify-center shrink-0 text-[#0891b2] font-bold text-xs bg-[#ecfeff] tracking-wider mt-0.5 shadow-xs">
+                  {getInitials(client.name)}
+                </div>
+
+                <div className="space-y-1 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-base font-bold text-[#1a1c1c] group-hover:text-[#0891b2] transition-colors">
+                      {client.name}
+                    </h3>
+
+                    {client.kycStatus === 'APPROVED' && (
+                      <span className="px-2 py-0.5 bg-[#dcfce7] text-[#166534] border border-[#86efac] text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
+                        <ShieldCheck className="w-3 h-3 text-[#16a34a]" />
+                        <span>KYC Verified</span>
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[#5f5e5e] text-xs">
+                    <span className="flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-[#4a4a4a]" />
+                      <span>{client.address} ({client.region})</span>
+                    </span>
+                    {client.phone && (
+                      <span className="flex items-center gap-1 font-mono">
+                        <Phone className="w-3.5 h-3.5 text-[#4a4a4a]" />
+                        <span>{client.phone}</span>
+                      </span>
+                    )}
+                    {client.email && (
+                      <span className="flex items-center gap-1">
+                        <Mail className="w-3.5 h-3.5 text-[#4a4a4a]" />
+                        <span>{client.email}</span>
+                      </span>
+                    )}
+                    <span className="flex items-center gap-1 font-mono">
+                      <Tag className="w-3.5 h-3.5 text-[#4a4a4a]" />
+                      <span>ID: <strong className="text-[#1a1c1c]">{client.id}</strong></span>
+                    </span>
+                  </div>
+
+                  {/* Additional auto-extracted KYC details */}
+                  {(client.idNumber || client.occupation || client.bankName) && (
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-[11px] text-[#595959]">
+                      {client.idNumber && (
+                        <span className="bg-[#f2f2f2] px-2 py-0.5 border border-[#d6d6d6] font-mono">
+                          CNI/ID: <strong>{client.idNumber}</strong>
+                        </span>
+                      )}
+                      {client.occupation && (
+                        <span className="bg-[#f2f2f2] px-2 py-0.5 border border-[#d6d6d6]">
+                          Occ: <strong>{client.occupation}</strong>
+                        </span>
+                      )}
+                      {client.bankName && (
+                        <span className="bg-[#f2f2f2] px-2 py-0.5 border border-[#d6d6d6]">
+                          Bank: <strong>{client.bankName} {client.accountNumber ? `(${client.accountNumber})` : ''}</strong>
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Account Balance & Quick Actions */}
+              <div className="flex flex-row md:flex-col items-center md:items-end justify-between w-full md:w-auto gap-4 pt-4 md:pt-0 border-t border-[#e5e5e5] md:border-none">
+                <div className="text-left md:text-right">
+                  <div className="text-[11px] font-bold uppercase tracking-wider mb-0.5 text-[#5f5e5e]">
+                    Current Balance
+                  </div>
+                  <div className="font-mono text-xl md:text-2xl font-bold text-[#1a1c1c] tabular-nums">
+                    {formatXAF(client.outstandingBalance)}{' '}
+                    <span className="text-xs font-normal text-[#5f5e5e] font-sans">FCFA</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => onSelectClientForCollection(client)}
+                  className="px-3 py-1.5 bg-[#2f3131] hover:bg-black text-white text-[11px] font-bold uppercase tracking-wider transition-colors shadow-xs cursor-pointer flex items-center gap-1.5"
+                >
+                  <Banknote className="w-3.5 h-3.5 text-[#a5f3fc]" />
+                  <span>Start Collection</span>
+                </button>
+              </div>
+            </div>
+          );
+        })}
+
+        {filteredClients.length === 0 && (
+          <div className="p-12 text-center text-sm text-[#5f5e5e]">
+            No clients match the current search or filters.
+          </div>
+        )}
+      </div>
+
+      {/* Add New Client Modal */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-[#ffffff] border border-[#e5e5e5] w-full max-w-lg shadow-xl">
+            <div className="p-6 border-b border-[#e5e5e5] flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-bold text-[#1a1c1c]">Add New Client</h3>
+                <p className="text-xs text-[#5f5e5e]">Register a merchant or client in the terminal</p>
+              </div>
+              <button
+                onClick={() => setIsAddModalOpen(false)}
+                className="text-[#5f5e5e] hover:text-[#1a1c1c] p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateClient} className="p-6 space-y-4">
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-[#1a1c1c] mb-1.5">
+                  Client / Business Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newClientName}
+                  onChange={(e) => setNewClientName(e.target.value)}
+                  placeholder="e.g. Marché Mokolo Store #12"
+                  className="w-full h-11 px-3 bg-[#ffffff] border border-[#e5e5e5] focus:border-[#0891b2] focus:ring-1 focus:ring-[#0891b2] outline-none text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-[#1a1c1c] mb-1.5">
+                  Address / Physical Location *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newClientAddress}
+                  onChange={(e) => setNewClientAddress(e.target.value)}
+                  placeholder="e.g. 45 Rue de Nachtigal, Yaoundé"
+                  className="w-full h-11 px-3 bg-[#ffffff] border border-[#e5e5e5] focus:border-[#0891b2] focus:ring-1 focus:ring-[#0891b2] outline-none text-sm"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[#1a1c1c] mb-1.5">
+                    Region / Country / City
+                  </label>
+                  <input
+                    type="text"
+                    value={newClientRegion}
+                    onChange={(e) => setNewClientRegion(e.target.value)}
+                    placeholder="e.g. Douala, London, Nigeria, Paris, New York..."
+                    className="w-full h-11 px-3 bg-[#ffffff] border border-[#e5e5e5] focus:border-[#0891b2] focus:ring-1 focus:ring-[#0891b2] outline-none text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[#1a1c1c] mb-1.5">
+                    Initial Balance (XAF)
+                  </label>
+                  <input
+                    type="text"
+                    value={formatCommaNumber(newClientBalance)}
+                    onChange={(e) => setNewClientBalance(cleanCommas(e.target.value))}
+                    placeholder="0"
+                    className="w-full h-11 px-3 bg-[#ffffff] border border-[#e5e5e5] focus:border-[#0891b2] focus:ring-1 focus:ring-[#0891b2] outline-none text-sm font-mono font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[#1a1c1c] mb-1.5">
+                    Phone Number
+                  </label>
+                  <input
+                    type="text"
+                    value={newClientPhone}
+                    onChange={(e) => setNewClientPhone(e.target.value)}
+                    placeholder="+237 6XX XX XX XX"
+                    className="w-full h-11 px-3 bg-[#ffffff] border border-[#e5e5e5] focus:border-[#0891b2] focus:ring-1 focus:ring-[#0891b2] outline-none text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[#1a1c1c] mb-1.5">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={newClientEmail}
+                    onChange={(e) => setNewClientEmail(e.target.value)}
+                    placeholder="client@domain.cm"
+                    className="w-full h-11 px-3 bg-[#ffffff] border border-[#e5e5e5] focus:border-[#0891b2] focus:ring-1 focus:ring-[#0891b2] outline-none text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-[#e5e5e5] flex gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="px-5 py-2.5 border border-[#e5e5e5] text-xs font-bold uppercase tracking-wider text-[#1a1c1c] hover:bg-[#f3f3f3]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-6 py-2.5 bg-[#0891b2] hover:bg-[#0e7490] active:scale-[0.98] text-white text-xs font-bold uppercase tracking-wider shadow-sm cursor-pointer flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <RotateCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Saving Client...</span>
+                    </>
+                  ) : (
+                    <span>Save Client</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

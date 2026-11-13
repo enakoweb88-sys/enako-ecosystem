@@ -1,0 +1,757 @@
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsBoolean,
+  IsDateString,
+  IsEmail,
+  IsEnum,
+  IsInt,
+  IsIn,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+  MinLength,
+  MaxLength,
+} from 'class-validator';
+import { RoleName, MealStatus, KycStatus, TaskPriority, TaskStatus, GoalScope } from '@prisma/client';
+
+// Re-export enums for backward compatibility
+export { RoleName, MealStatus, KycStatus, TaskPriority, GoalScope };
+
+// ─── Query / Pagination ───────────────────────────────────────────────────────
+
+export class QueryDto {
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  page?: number = 1;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  limit?: number = 25;
+
+  @IsOptional()
+  @IsString()
+  sortBy?: string;
+
+  @IsOptional()
+  @IsString()
+  sortOrder?: 'asc' | 'desc' = 'desc';
+
+  @IsOptional()
+  @IsString()
+  department?: string;
+}
+
+// ─── Employees ────────────────────────────────────────────────────────────────
+
+export class CreateEmployeeDto {
+  @IsString()
+  fullName!: string;
+
+  @IsEmail()
+  email!: string;
+
+  @IsString()
+  @IsOptional()
+  phone?: string;
+
+  @IsString()
+  @IsOptional()
+  title?: string;
+
+  @IsEnum(RoleName)
+  role!: RoleName;
+
+  @IsString()
+  @IsOptional()
+  department?: string;
+
+  @IsString()
+  @MinLength(8)
+  password!: string;
+
+  @IsDateString()
+  @IsOptional()
+  dateOfBirth?: string;
+
+  @IsString()
+  @IsOptional()
+  address?: string;
+
+  @IsEmail()
+  @IsOptional()
+  personalEmail?: string;
+
+  @IsString()
+  @IsOptional()
+  employmentType?: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  @IsOptional()
+  salary?: number;
+
+  @IsString()
+  @IsOptional()
+  emergencyContact?: string;
+
+  @IsDateString()
+  @IsOptional()
+  hireDate?: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  ledDepartments?: string[];
+
+  @IsString()
+  @IsOptional()
+  responsibilities?: string;
+
+  @IsString()
+  @IsOptional()
+  goals?: string;
+
+  @IsArray()
+  @IsOptional()
+  kpis?: Array<{
+    title: string;
+    description?: string;
+    targetValue?: number;
+    unit?: string;
+    dueDate?: string;
+  }>;
+}
+
+export class UpdateEmployeeDto {
+  @IsEmail()
+  @IsOptional()
+  email?: string;
+
+  @IsString()
+  @IsOptional()
+  fullName?: string;
+
+  @IsString()
+  @IsOptional()
+  phone?: string;
+
+  @IsString()
+  @IsOptional()
+  title?: string;
+
+  @IsEnum(RoleName)
+  @IsOptional()
+  role?: RoleName;
+
+  @IsString()
+  @IsOptional()
+  department?: string;
+
+  @IsDateString()
+  @IsOptional()
+  dateOfBirth?: string;
+
+  @IsString()
+  @IsOptional()
+  address?: string;
+
+  @IsEmail()
+  @IsOptional()
+  personalEmail?: string;
+
+  @IsString()
+  @IsOptional()
+  employmentType?: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  @IsOptional()
+  salary?: number;
+
+  @IsString()
+  @IsOptional()
+  emergencyContact?: string;
+
+  @IsDateString()
+  @IsOptional()
+  hireDate?: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  ledDepartments?: string[];
+
+  @IsString()
+  @IsOptional()
+  responsibilities?: string;
+
+  @IsString()
+  @IsOptional()
+  goals?: string;
+
+}
+
+// ─── Users (Self) ─────────────────────────────────────────────────────────────
+
+export class UpdateMeDto {
+  @IsEmail()
+  @IsOptional()
+  email?: string;
+
+  @IsString()
+  @IsOptional()
+  fullName?: string;
+
+  @IsString()
+  @IsOptional()
+  phone?: string;
+
+  @IsString()
+  @IsOptional()
+  title?: string;
+
+  @IsString()
+  @IsOptional()
+  avatarUrl?: string;
+
+  @IsString()
+  @IsOptional()
+  address?: string;
+
+  @IsEmail()
+  @IsOptional()
+  personalEmail?: string;
+
+  @IsString()
+  @IsOptional()
+  emergencyContact?: string;
+
+  @IsDateString()
+  @IsOptional()
+  dateOfBirth?: string;
+}
+
+// ─── Transactions ─────────────────────────────────────────────────────────────
+
+export class CreateTransactionDto {
+  @IsString()
+  entity!: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  amount!: number;
+
+  @Type(() => Number)
+  @IsNumber()
+  @IsOptional()
+  amountInXaf?: number;
+
+  @Type(() => Number)
+  @IsNumber()
+  @IsOptional()
+  exchangeRate?: number;
+
+  @IsString()
+  @IsOptional()
+  currency?: string = 'XAF';
+
+  @IsString()
+  @IsOptional()
+  type?: string;
+
+  @IsString()
+  @IsOptional()
+  channel?: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  @IsOptional()
+  charges?: number = 0;
+
+  @IsString()
+  @IsOptional()
+  description?: string;
+}
+
+// ─── Expenses ─────────────────────────────────────────────────────────────────
+
+export class CreateExpenseDto {
+  @IsOptional() @IsString() @MaxLength(200) department?: string;
+  @IsOptional() @IsDateString() expenseDate?: string;
+  @IsOptional() @IsString() @MaxLength(100) paymentMethod?: string;
+  @IsOptional() @IsString() @MaxLength(200) receiptRef?: string;
+  @IsOptional() @IsString() @MaxLength(4000) notes?: string;
+  @IsString()
+  description!: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  amount!: number;
+
+  @IsString()
+  @IsOptional()
+  currency?: string = 'XAF';
+
+  @IsString()
+  @IsOptional()
+  category?: string;
+}
+
+// ─── MoneyDto (backward compat) ──────────────────────────────────────────────
+
+export class MoneyDto {
+  @IsString()
+  description!: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  amount!: number;
+
+  @IsString()
+  @IsOptional()
+  currency?: string;
+
+  @IsString()
+  @IsOptional()
+  category?: string;
+
+  @IsString()
+  @IsOptional()
+  entity?: string;
+
+  @IsString()
+  @IsOptional()
+  type?: string;
+}
+
+// ─── Tasks ────────────────────────────────────────────────────────────────────
+
+export class CreateTaskDto {
+  @IsEnum(TaskStatus)
+  @IsOptional()
+  status?: TaskStatus;
+
+  @IsString()
+  title!: string;
+
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @IsString()
+  @IsOptional()
+  assigneeId?: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  assigneeIds?: string[];
+
+  @IsDateString()
+  @IsOptional()
+  dueDate?: string;
+
+  @IsEnum(TaskPriority)
+  @IsOptional()
+  priority?: TaskPriority = TaskPriority.NORMAL;
+}
+
+export class UpdateTaskDto {
+  @IsString()
+  @IsOptional()
+  title?: string;
+
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @IsString()
+  @IsOptional()
+  assigneeId?: string;
+
+  @IsDateString()
+  @IsOptional()
+  dueDate?: string;
+
+  @IsEnum(TaskPriority)
+  @IsOptional()
+  priority?: TaskPriority;
+}
+
+export class CreateTaskCommentDto {
+  @IsString()
+  content!: string;
+}
+
+// ─── Meals ────────────────────────────────────────────────────────────────────
+
+export class MealDto {
+  @IsString()
+  employeeId!: string;
+
+  @IsDateString()
+  date!: string;
+
+  @IsEnum(MealStatus)
+  status!: MealStatus;
+
+  @IsString()
+  @IsOptional()
+  mealName?: string;
+
+  @IsString()
+  @IsOptional()
+  mealTime?: string;
+
+  @IsString()
+  @IsOptional()
+  vendor?: string;
+
+  @IsString()
+  @IsOptional()
+  notes?: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  @IsOptional()
+  price?: number;
+}
+
+// ─── KYC ─────────────────────────────────────────────────────────────────────
+
+export class KycReviewDto {
+  @IsEnum(KycStatus)
+  status!: KycStatus;
+
+  @IsString()
+  @IsOptional()
+  rejectionReason?: string;
+}
+
+// ─── Goals ────────────────────────────────────────────────────────────────────
+
+export class CreateGoalDto {
+  @IsIn(['DAILY', 'WEEKLY', 'MONTHLY'])
+  @IsOptional()
+  cadence?: string;
+
+  @IsDateString()
+  @IsOptional()
+  periodStart?: string;
+
+  @IsString()
+  title!: string;
+
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  @IsOptional()
+  targetValue?: number;
+
+  @IsString()
+  @IsOptional()
+  targetLabel?: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  @IsOptional()
+  currentValue?: number;
+
+  @IsString()
+  @IsOptional()
+  unit?: string;
+
+  @IsEnum(GoalScope)
+  @IsOptional()
+  scope?: GoalScope;
+
+  @IsString()
+  @IsOptional()
+  departmentId?: string;
+
+  @IsString()
+  @IsOptional()
+  ownerId?: string;
+
+  @IsDateString()
+  @IsOptional()
+  dueDate?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  isKpi?: boolean;
+
+  @Type(() => Number)
+  @IsNumber()
+  @IsOptional()
+  kpiWeight?: number;
+}
+
+export class UpdateGoalDto {
+  @IsIn(['DAILY', 'WEEKLY', 'MONTHLY'])
+  @IsOptional()
+  cadence?: string;
+
+  @IsDateString()
+  @IsOptional()
+  periodStart?: string;
+
+  @IsString()
+  @IsOptional()
+  title?: string;
+
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  @IsOptional()
+  targetValue?: number;
+
+  @IsString()
+  @IsOptional()
+  targetLabel?: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  @IsOptional()
+  currentValue?: number;
+
+  @IsString()
+  @IsOptional()
+  unit?: string;
+
+  @IsDateString()
+  @IsOptional()
+  dueDate?: string;
+
+  @IsIn(['ACTIVE', 'COMPLETED', 'CANCELLED'])
+  @IsOptional()
+  status?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  isKpi?: boolean;
+
+  @Type(() => Number)
+  @IsNumber()
+  @IsOptional()
+  kpiWeight?: number;
+}
+
+export class GoalQueryDto extends QueryDto {
+  @IsEnum(GoalScope)
+  @IsOptional()
+  scope?: GoalScope;
+
+  @IsIn(['ACTIVE', 'COMPLETED', 'CANCELLED'])
+  @IsOptional()
+  status?: string;
+}
+
+export class GoalReportQueryDto {
+  @IsIn(['DAILY', 'WEEKLY', 'MONTHLY'])
+  period!: string;
+
+  @IsDateString()
+  date!: string;
+
+  @IsString()
+  @IsOptional()
+  ownerId?: string;
+}
+
+export class GoalProgressDto {
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  currentValue!: number;
+}
+
+// ─── Announcements ────────────────────────────────────────────────────────────
+
+export class CreateAnnouncementDto {
+  @IsString()
+  title!: string;
+
+  @IsString()
+  content!: string;
+
+  @IsString()
+  @IsOptional()
+  tag?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  pinned?: boolean = false;
+}
+
+export class UpdateAnnouncementDto {
+  @IsString()
+  @IsOptional()
+  title?: string;
+
+  @IsString()
+  @IsOptional()
+  content?: string;
+
+  @IsString()
+  @IsOptional()
+  tag?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  pinned?: boolean;
+}
+
+// ─── Performance ─────────────────────────────────────────────────────────────
+
+export class CreatePerformanceMetricDto {
+  @IsString()
+  userId!: string;
+
+  @IsString()
+  metric!: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  value!: number;
+
+  @IsString()
+  period!: string;
+
+  @IsString()
+  @IsOptional()
+  notes?: string;
+}
+
+// ─── Subscriptions ────────────────────────────────────────────────────────────
+
+export class CreateSubscriptionDto {
+  @IsOptional() @IsString() @MaxLength(200) department?: string;
+  @IsOptional() @IsString() @MaxLength(100) seats?: string;
+  @IsOptional() @IsString() @MaxLength(4000) notes?: string;
+  @IsString()
+  name!: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  cost!: number;
+
+  @IsString()
+  @IsOptional()
+  currency?: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  @IsOptional()
+  costInXaf?: number;
+
+  @Type(() => Number)
+  @IsNumber()
+  @IsOptional()
+  exchangeRate?: number;
+
+  @IsString()
+  cycle!: string;
+
+  @IsString()
+  startDate!: string;
+
+  @IsString()
+  nextBilling!: string;
+
+  @IsString()
+  @IsOptional()
+  receiptUrl?: string;
+}
+
+export class UpdateSubscriptionDto {
+  @IsString()
+  @IsOptional()
+  status?: string;
+
+  @IsString()
+  @IsOptional()
+  name?: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  @IsOptional()
+  cost?: number;
+
+  @IsString()
+  @IsOptional()
+  cycle?: string;
+
+  @IsString()
+  @IsOptional()
+  startDate?: string;
+
+  @IsString()
+  @IsOptional()
+  nextBilling?: string;
+
+  @IsString()
+  @IsOptional()
+  receiptUrl?: string;
+}
+
+export class CreateCashCollectionDto {
+  @IsString()
+  @IsOptional()
+  id?: string;
+
+  @IsString()
+  clientName!: string;
+
+  @IsString()
+  location!: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  amountCollected!: number;
+
+  @Type(() => Number)
+  @IsNumber()
+  @IsOptional()
+  outstandingBalance?: number;
+
+  @IsString()
+  @IsOptional()
+  currency?: string;
+
+  @IsDateString()
+  @IsOptional()
+  collectionTime?: string;
+
+  @IsString()
+  @IsOptional()
+  status?: 'COMPLETE' | 'PENDING' | 'CANCELLED';
+
+  @IsString()
+  description!: string;
+
+  @IsString()
+  @IsOptional()
+  receiptUrl?: string;
+}
+
+export class UpdateCashCollectionStatusDto {
+  @IsString()
+  status!: 'COMPLETE' | 'PENDING' | 'CANCELLED';
+}

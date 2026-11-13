@@ -1,0 +1,34 @@
+import { apiRequest } from './core';
+
+const requests = new Map<string, string>();
+export const transactionsApi = {
+  transactions: (params?: { search?: string; limit?: number; page?: number; status?: string; type?: string; dateRange?: string; channel?: string; specificDate?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.search) q.set('search', params.search);
+    if (params?.limit) q.set('limit', String(params.limit));
+    if (params?.page) q.set('page', String(params.page));
+    if (params?.status) q.set('status', params.status);
+    if (params?.type) q.set('type', params.type);
+    if (params?.dateRange) q.set('dateRange', params.dateRange);
+    if (params?.channel) q.set('channel', params.channel);
+    if (params?.specificDate) q.set('specificDate', params.specificDate);
+    return apiRequest<any>(`/transactions?${q}`);
+  },
+  createTransaction: async (body: unknown, suppliedKey?: string) => {
+    const signature = JSON.stringify(body), idempotencyKey = suppliedKey || requests.get(signature) || crypto.randomUUID();
+    requests.set(signature, idempotencyKey);
+    const result = await apiRequest<any>('/transactions', { method: 'POST', headers: { 'Idempotency-Key': idempotencyKey }, body: signature });
+    requests.delete(signature); return result;
+  },
+  setTransactionStatus: (id: string, status: string) =>
+    apiRequest<any>(`/transactions/${id}/status/${status}`, { method: 'PATCH' }),
+  settleTransaction: (id: string) =>
+    apiRequest<any>(`/transactions/${id}/settle`, { method: 'PATCH' }),
+  flagTransaction: (id: string, reason?: string) =>
+    apiRequest<any>(`/transactions/${id}/flag`, { method: 'PATCH', body: JSON.stringify({ reason }) }),
+  setFloatBalance: (channel: string, balance: number) =>
+    apiRequest<any>('/transactions/float', { method: 'POST', body: JSON.stringify({ channel, balance }) }),
+  getExchangeRates: () => apiRequest<any[]>('/transactions/exchange-rates'),
+  saveExchangeRates: (rates: any[]) =>
+    apiRequest<any[]>('/transactions/exchange-rates', { method: 'POST', body: JSON.stringify({ rates }) }),
+};

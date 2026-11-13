@@ -1,0 +1,1432 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        RoleName @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User[]
+
+  @@map("roles")
+}
+
+model Department {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  goals     Goal[]
+  users     User[]
+  leaders   User[]   @relation("DepartmentLeaders")
+
+  @@map("departments")
+}
+
+model User {
+  id                   String                @id @default(cuid())
+  email                String                @unique
+  passwordHash         String
+  fullName             String
+  phone                String?
+  title                String?
+  status               UserStatus            @default(ACTIVE)
+  roleId               String
+  departmentId         String?
+  lastLoginAt          DateTime?
+  passwordChangedAt    DateTime?             @default(now())
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  avatarUrl            String?
+  address              String?
+  dateOfBirth          DateTime?
+  emergencyContact     String?
+  employmentType       String?
+  hireDate             DateTime?
+  personalEmail        String?
+  salary               Decimal?              @db.Decimal(14, 2)
+  responsibilities     String?
+  goalsText            String?
+  activityLogs         ActivityLog[]
+  announcementComments AnnouncementComment[]
+  announcementLikes    AnnouncementLike[]
+  announcements        Announcement[]
+  auditLogs            AuditLog[]
+  channelMembers       ChannelMember[]
+  commissions          Commission[]
+  dailyReports         DailyReport[]         @relation("UserDailyReports")
+  reviewedDailyReports DailyReport[]         @relation("ReviewedDailyReports")
+  marketerLeads        MarketerLead[]
+  marketerTerritories  MarketerTerritory[]
+  documents            Document[]
+  expenses             Expense[]
+  cashCollections      CashCollection[]
+  goals                Goal[]                @relation("PersonalGoals")
+  approvedKyc          KycSubmission[]       @relation("ApprovedKyc")
+  reviewedKyc          KycSubmission[]       @relation("ReviewedKyc")
+  mealRecords          MealRecord[]
+  sentMessages         Message[]             @relation("SentMessages")
+  messageReadReceipts  MessageReadReceipt[]
+  notifications        Notification[]
+  performanceMetrics   PerformanceMetric[]
+  refreshTokens        RefreshToken[]
+  generatedReports     ReportFile[]          @relation("GeneratedReports")
+  addedSubscriptions   Subscription[]        @relation("AddedSubscriptions")
+  taskComments         TaskComment[]
+  assignedTasks        Task[]                @relation("AssignedTasks")
+  createdTasks         Task[]                @relation("CreatedTasks")
+  preference           UserPreference?
+  userSessions         UserSession[]
+  department           Department?           @relation(fields: [departmentId], references: [id])
+  role                 Role                  @relation(fields: [roleId], references: [id])
+  ledDepartments       Department[]          @relation("DepartmentLeaders")
+
+  @@index([departmentId])
+  @@index([roleId])
+  @@index([status])
+  @@map("users")
+  authSessions AuthSession[]
+
+  supportTickets SupportTicket[]
+
+}
+
+model UserPreference {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  analytics      Boolean  @default(true)
+  mfa            Boolean  @default(false)
+  aiWorkspace    Boolean  @default(false)
+  emailNotif     Boolean  @default(true)
+  pushNotif      Boolean  @default(true)
+  smsNotif       Boolean  @default(false)
+  slackConnected Boolean  @default(false)
+  awsConnected   Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
+}
+
+model UserSession {
+  id        String    @id @default(cuid())
+  userId    String
+  loginAt   DateTime  @default(now())
+  logoutAt  DateTime?
+  duration  Int?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_sessions")
+}
+
+model CashClient {
+  id                 String   @id
+  name               String
+  address            String
+  region             String   @default("Cameroon")
+  phone              String?
+  email              String?
+  outstandingBalance Decimal  @default(0) @db.Decimal(14, 2)
+  lastVisit          String   @default("Never")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([name])
+  @@index([phone])
+  @@index([email])
+  @@map("cash_clients")
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  tokenHash String
+  userId    String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  device    String?
+  ipAddress String?
+  location  String?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+  authSessionId String?
+  authSession AuthSession? @relation(fields: [authSessionId], references: [id], onDelete: Cascade)
+  usedAt DateTime?
+  replacedById String?
+  @@index([authSessionId])
+
+}
+
+model Task {
+  id          String        @id @default(cuid())
+  title       String
+  description String?
+  status      TaskStatus    @default(TODO)
+  dueDate     DateTime?
+  assigneeId  String?
+  creatorId   String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  priority    TaskPriority  @default(NORMAL)
+  comments    TaskComment[]
+  assignee    User?         @relation("AssignedTasks", fields: [assigneeId], references: [id])
+  creator     User          @relation("CreatedTasks", fields: [creatorId], references: [id])
+
+  @@index([status])
+  @@index([assigneeId])
+  @@index([creatorId])
+  @@map("tasks")
+}
+
+model TaskComment {
+  id        String   @id @default(cuid())
+  taskId    String
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  author    User     @relation(fields: [authorId], references: [id])
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([authorId])
+  @@map("task_comments")
+}
+
+model Expense {
+  department String?
+  expenseDate DateTime?
+  paymentMethod String?
+  receiptRef String?
+  notes String?
+  id            String        @id @default(cuid())
+  description   String
+  amount        Decimal       @db.Decimal(14, 2)
+  currency      String        @default("XAF")
+  category      String
+  status        ExpenseStatus @default(PENDING)
+  receiptUrl    String?
+  submittedById String
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  reviewedAt    DateTime?
+  reviewedById  String?
+  submittedBy   User          @relation(fields: [submittedById], references: [id])
+
+  @@index([status])
+  @@index([submittedById])
+  @@map("expenses")
+}
+
+model Transaction {
+  id           String            @id @default(cuid())
+  reference    String            @unique
+  entity       String
+  amount       Decimal           @db.Decimal(14, 2)
+  currency     String            @default("XAF")
+  amountInXaf  Decimal?          @db.Decimal(14, 2)
+  exchangeRate Decimal?          @db.Decimal(14, 4)
+  type         String
+  status       TransactionStatus @default(PENDING)
+  proofUrl     String?
+  settledAt    DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  description  String?
+  channel      String?
+  charges      Decimal?          @default(0) @db.Decimal(14, 2)
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("transactions")
+  idempotencyKey String? @unique
+  requestHash String?
+  ledgerAppliedAt DateTime?
+
+}
+
+model MealRecord {
+  id             String     @id @default(cuid())
+  employeeId     String
+  date           DateTime
+  status         MealStatus
+  totalAmount    Decimal    @default(1000) @db.Decimal(14, 2)
+  companyAmount  Decimal    @default(500) @db.Decimal(14, 2)
+  employeeAmount Decimal    @default(500) @db.Decimal(14, 2)
+  disputeReason  String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  mealName       String?
+  mealTime       String?
+  vendor         String?    @default("Mami Chop")
+  notes          String?
+  employee       User       @relation(fields: [employeeId], references: [id])
+
+  @@index([employeeId, date])
+  @@index([employeeId])
+  @@index([status])
+  @@map("meal_records")
+}
+
+model DailyReport {
+  id               String    @id @default(cuid())
+  userId           String
+  date             DateTime  @default(now())
+  content          String
+  loginTime        DateTime?
+  logoutTime       DateTime?
+  pdfUrl           String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  type             String    @default("DAILY")
+  attachments      Json?
+  status           String    @default("SUBMITTED")
+  reviewerId       String?
+  reviewerComments String?
+  reviewedAt       DateTime?
+  ceoCompletedAt   DateTime?
+  ceoComment       String?
+  ceoReviewerId    String?
+  documents        ReportDocument[]
+  user             User      @relation("UserDailyReports", fields: [userId], references: [id])
+  reviewer         User?     @relation("ReviewedDailyReports", fields: [reviewerId], references: [id])
+
+  @@index([userId])
+  @@index([reviewerId])
+  @@index([type])
+  @@index([status])
+  @@map("daily_reports")
+}
+
+model ReportDocument {
+  id           String      @id @default(cuid())
+  reportId     String
+  originalName String
+  mimeType     String
+  sizeBytes    Int
+  sha256       String
+  data         Bytes
+  createdAt    DateTime    @default(now())
+  report       DailyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@map("report_documents")
+}
+
+model KycSubmission {
+  id              String        @id @default(cuid())
+  applicantType   String
+  applicantName   String
+  email           String?
+  phone           String?
+  payload         Json
+  status          KycStatus     @default(PENDING)
+  rejectionReason String?
+  reviewedById    String?
+  approvedById    String?
+  reviewedAt      DateTime?
+  approvedAt      DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  documents       KycDocument[]
+  approvedBy      User?         @relation("ApprovedKyc", fields: [approvedById], references: [id])
+  reviewedBy      User?         @relation("ReviewedKyc", fields: [reviewedById], references: [id])
+
+  @@index([status])
+  @@index([approvedById])
+  @@index([reviewedById])
+  @@map("kyc_submissions")
+}
+
+model KycDocument {
+  id           String        @id @default(cuid())
+  submissionId String
+  documentType String
+  fileName     String
+  fileUrl      String
+  mimeType     String?
+  createdAt    DateTime      @default(now())
+  submission   KycSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId])
+  @@map("kyc_documents")
+}
+
+model Goal {
+  creatorId    String?
+  id           String      @id @default(cuid())
+  title        String
+  description  String?
+  targetValue  Decimal?    @db.Decimal(14, 2)
+  targetLabel  String?
+  currentValue Decimal?    @default(0) @db.Decimal(14, 2)
+  unit         String?
+  departmentId String?
+  dueDate      DateTime?
+  cadence      String?
+  periodStart  DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  ownerId      String?
+  scope        GoalScope   @default(COMPANY)
+  status       GoalStatus  @default(ACTIVE)
+  isKpi        Boolean     @default(false)
+  kpiWeight    Decimal?    @db.Decimal(5, 2)
+  department   Department? @relation(fields: [departmentId], references: [id])
+  owner        User?       @relation("PersonalGoals", fields: [ownerId], references: [id])
+
+  @@index([scope, status])
+  @@index([departmentId])
+  @@index([ownerId])
+  @@index([status, completedAt])
+  @@index([creatorId])
+  @@map("goals")
+}
+
+model Channel {
+  id          String          @id @default(cuid())
+  name        String          @unique
+  description String?
+  isGeneral   Boolean         @default(false)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  members     ChannelMember[]
+
+  @@map("channels")
+}
+
+model ChannelMember {
+  id        String   @id @default(cuid())
+  channelId String
+  userId    String
+  createdAt DateTime @default(now())
+  channel   Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, userId])
+  @@index([channelId])
+  @@index([userId])
+  @@map("channel_members")
+}
+
+model Announcement {
+  id        String                @id @default(cuid())
+  title     String
+  content   String
+  tag       String?
+  authorId  String
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+  pinned    Boolean               @default(false)
+  comments  AnnouncementComment[]
+  likes     AnnouncementLike[]
+  author    User                  @relation(fields: [authorId], references: [id])
+
+  @@index([authorId])
+  @@index([pinned, createdAt])
+  @@map("announcements")
+}
+
+model AnnouncementLike {
+  id             String       @id @default(cuid())
+  announcementId String
+  userId         String
+  createdAt      DateTime     @default(now())
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([announcementId, userId])
+  @@index([announcementId])
+  @@index([userId])
+  @@map("announcement_likes")
+}
+
+model AnnouncementComment {
+  id             String       @id @default(cuid())
+  announcementId String
+  userId         String
+  content        String
+  createdAt      DateTime     @default(now())
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([announcementId])
+  @@index([userId])
+  @@map("announcement_comments")
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  title     String
+  body      String
+  type      NotificationType @default(INFO)
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+  link      String?
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailDelivery NotificationEmailDelivery?
+
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+model NotificationEmailDelivery {
+  id                String       @id @default(cuid())
+  notificationId    String       @unique
+  status            String       @default("PENDING")
+  attempts          Int          @default(0)
+  nextAttemptAt     DateTime     @default(now())
+  leaseUntil        DateTime?
+  leaseToken        String?
+  recipientEmail    String?
+  sentAt            DateTime?
+  providerMessageId String?
+  lastError         String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  notification      Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextAttemptAt])
+  @@index([status, leaseUntil])
+  @@map("notification_email_deliveries")
+}
+
+model Message {
+  readReceipts MessageReadReceipt[]
+  reportReferenceId String?
+  reportReferenceTitle String?
+  id        String   @id @default(cuid())
+  channel   String
+  content   String
+  senderId  String
+  createdAt DateTime @default(now())
+  sender    User     @relation("SentMessages", fields: [senderId], references: [id])
+
+  @@index([channel, createdAt])
+  @@index([senderId])
+  @@map("messages")
+}
+
+model MessageReadReceipt {
+  userId String
+  messageId String
+  readAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@id([userId, messageId])
+  @@index([messageId])
+  @@map("message_read_receipts")
+}
+
+model PerformanceMetric {
+  id        String   @id @default(cuid())
+  userId    String
+  metric    String
+  value     Decimal  @db.Decimal(14, 2)
+  period    String
+  createdAt DateTime @default(now())
+  notes     String?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, period])
+  @@map("performance_metrics")
+}
+
+model Document {
+  id           String   @id @default(cuid())
+  fileName     String
+  originalName String
+  mimeType     String
+  sizeBytes    Int
+  url          String
+  category     String   @default("general")
+  uploadedById String
+  createdAt    DateTime @default(now())
+  uploadedBy   User     @relation(fields: [uploadedById], references: [id])
+
+  @@index([uploadedById])
+  @@map("documents")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+  ipAddress String?
+  actor     User?    @relation(fields: [actorId], references: [id])
+
+  @@index([actorId, createdAt])
+  @@index([entity, entityId])
+  @@map("audit_logs")
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String
+  module    String
+  details   String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([module])
+  @@map("activity_logs")
+}
+
+model BankAccount {
+  id        String   @id @default(cuid())
+  name      String
+  bank      String
+  accountNo String
+  balance   Decimal  @db.Decimal(14, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("bank_accounts")
+}
+
+model Budget {
+  id        String   @id @default(cuid())
+  category  String
+  budget    Decimal  @db.Decimal(14, 2)
+  actual    Decimal  @db.Decimal(14, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("budgets")
+}
+
+model Invoice {
+  id        String   @id @default(cuid())
+  client    String
+  amount    Decimal  @db.Decimal(14, 2)
+  status    String
+  dueDate   DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("invoices")
+}
+
+model AppActivity {
+  id        String   @id @default(cuid())
+  date      DateTime
+  downloads Int
+  active    Int
+  createdAt DateTime @default(now())
+
+  @@map("app_activities")
+}
+
+model MarketingChannel {
+  id        String   @id @default(cuid())
+  name      String
+  users     Int
+  total     Int
+  growth    Decimal  @db.Decimal(5, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("marketing_channels")
+}
+
+model NjangiGroup {
+  id            String               @id @default(cuid())
+  name          String
+  amount        Decimal              @db.Decimal(14, 2)
+  active        Boolean              @default(true)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  contributions NjangiContribution[]
+
+  @@map("njangi_groups")
+}
+
+model NjangiContribution {
+  id        String      @id @default(cuid())
+  groupId   String
+  amount    Decimal     @db.Decimal(14, 2)
+  createdAt DateTime    @default(now())
+  group     NjangiGroup @relation(fields: [groupId], references: [id])
+
+  @@index([groupId])
+  @@map("njangi_contributions")
+}
+
+model Lead {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  source    String
+  interest  String
+  status    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("leads")
+}
+
+model Meeting {
+  id        String   @id @default(cuid())
+  time      String
+  person    String
+  type      String
+  status    String
+  date      DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("meetings")
+}
+
+model Commission {
+  id        String   @id @default(cuid())
+  userId    String
+  total     Decimal  @db.Decimal(14, 2)
+  paid      Decimal  @db.Decimal(14, 2)
+  pending   Decimal  @db.Decimal(14, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("commissions")
+}
+
+model ContentPost {
+  id         String   @id @default(cuid())
+  title      String
+  platform   String
+  type       String
+  status     String
+  author     String
+  date       DateTime @default(now())
+  reach      Int      @default(0)
+  engagement Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("content_posts")
+}
+
+model AdCampaign {
+  id          String   @id @default(cuid())
+  date        DateTime
+  spend       Decimal  @db.Decimal(14, 2)
+  conversions Int
+  createdAt   DateTime @default(now())
+
+  @@map("ad_campaigns")
+}
+
+model SocialMetric {
+  id          String   @id @default(cuid())
+  platform    String
+  followers   Int
+  engagement  String
+  impressions Int
+  growth      Decimal  @db.Decimal(5, 2)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("social_metrics")
+}
+
+model SupportTicket {
+  id          String               @id @default(cuid())
+  customer    String               @default("Unknown")
+  subject     String
+  status      String               @default("New")
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  clientEmail String               @default("")
+  description String               @default("")
+  replies     SupportTicketReply[]
+
+  @@map("support_tickets")
+  ownerId String?
+  owner User? @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  @@index([ownerId])
+
+}
+
+model SupportTicketReply {
+  id        String        @id @default(cuid())
+  ticketId  String
+  message   String
+  isAdmin   Boolean       @default(false)
+  createdAt DateTime      @default(now())
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id])
+
+  @@index([ticketId])
+  @@map("support_ticket_replies")
+}
+
+model LeaveRequest {
+  id        String   @id @default(cuid())
+  employee  String
+  type      String
+  duration  String
+  status    String
+  employeeId String?
+  startDate DateTime? @db.Date
+  endDate DateTime? @db.Date
+  completedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("leave_requests")
+  @@index([status, endDate])
+}
+
+model Subscription {
+  department String?
+  seats String?
+  notes String?
+  id          String   @id @default(cuid())
+  name        String
+  cost        Decimal  @db.Decimal(14, 2)
+  currency    String   @default("USD")
+  costInXaf   Decimal? @db.Decimal(14, 2)
+  exchangeRate Decimal? @db.Decimal(14, 4)
+  cycle       String
+  status      String   @default("Active")
+  nextBilling DateTime
+  receiptUrl  String?
+  addedById   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  startDate   DateTime @default(now())
+  addedBy     User     @relation("AddedSubscriptions", fields: [addedById], references: [id])
+
+  @@index([addedById])
+  @@map("subscriptions")
+}
+
+model ReportFile {
+  id          String   @id @default(cuid())
+  title       String
+  type        String
+  size        String
+  data        String?
+  generatedBy String
+  createdAt   DateTime @default(now())
+  generator   User     @relation("GeneratedReports", fields: [generatedBy], references: [id])
+
+  @@index([generatedBy])
+  @@map("report_files")
+}
+
+model OutreachEvent {
+  id                 String                @id @default(cuid())
+  title              String
+  description        String?
+  status             OutreachEventStatus   @default(DRAFT)
+  openDate           DateTime?
+  closeDate          DateTime?
+  targetAmount       Decimal?              @db.Decimal(14, 2)
+  raisedAmount       Decimal?              @db.Decimal(14, 2)
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  descriptionFr      String?
+  targetSchools      String[]
+  titleFr            String?
+  gallery            Json?
+  storyDescription   String?
+  storyDescriptionFr String?
+  storyMediaType     String?
+  storyMediaUrl      String?
+  storyTitle         String?
+  storyTitleFr       String?
+  videoUrl           String?
+  type               String
+  customFields       Json?
+  applications       OutreachApplication[]
+
+  @@map("outreach_events")
+}
+
+model BlogPost {
+  id          String    @id @default(cuid())
+  title       String
+  content     String
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  images      String[]  @default([])
+  author      String
+  category    String    @default("Blog")
+  coverImage  String?
+  slug        String    @unique
+  status      String    @default("DRAFT")
+  video       String?
+
+  @@map("blog_posts")
+}
+
+model OutreachApplication {
+  id            String                  @id @default(cuid())
+  applicantName String
+  email         String
+  phone         String?
+  type          OutreachApplicationType @default(SCHOLARSHIP)
+  level         ApplicationLevel        @default(NONE)
+  status        ApplicationStatus       @default(PENDING)
+  details       Json?
+  documents     String[]
+  eventId       String?
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+  event         OutreachEvent?          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@map("outreach_applications")
+}
+
+model NewsletterSubscriber {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  subscribedAt DateTime @default(now())
+
+  @@map("newsletter_subscribers")
+}
+
+model PublicImpactStat {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  label     String
+  section   String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("public_impact_stats")
+}
+
+model PublicMilestone {
+  id          String   @id @default(cuid())
+  year        String
+  title       String
+  description String
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("public_milestones")
+}
+
+model PublicImpactChart {
+  id         String   @id @default(cuid())
+  label      String
+  percentage Int
+  color      String   @default("bg-[#00BFA5]")
+  order      Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("public_impact_charts")
+}
+
+model Donation {
+  id        String            @id @default(cuid())
+  amount Decimal @db.Decimal(14, 2)
+  sector    String
+  frequency DonationFrequency
+  method    PaymentMethod
+  fullName  String
+  email     String
+  phone     String
+  status    TransactionStatus @default(PENDING)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  documents String[]
+  currency  String            @default("XAF")
+  idempotencyKey String? @unique
+  requestHash String?
+  providerReference String? @unique
+  statusLookupHash String?
+  providerCheckedAt DateTime?
+  providerTransactionId String? @unique
+
+}
+
+model FloatAccount {
+  id        String   @id @default(cuid())
+  channel   String   @unique
+  balance   Decimal  @default(0) @db.Decimal(14, 2)
+  totalIn   Decimal  @default(0) @db.Decimal(14, 2)
+  totalOut  Decimal  @default(0) @db.Decimal(14, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("float_accounts")
+}
+
+model ExchangeRate {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  flag        String   @default("")
+  buyingRate  String   @default("")
+  sellingRate String   @default("")
+  change24h   Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("exchange_rates")
+}
+
+model Investment {
+  id        String   @id @default(cuid())
+  title     String
+  category  String
+  amount    Decimal  @default(0) @db.Decimal(14, 2)
+  weight    Decimal  @default(0) @db.Decimal(5, 2)
+  color     String   @default("bg-primary")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("investments")
+}
+
+model CookieConsentRecord {
+  id         String   @id @default(cuid())
+  consent    String
+  ipHash     String?
+  userAgent  String?
+  country    String?  @default("Cameroon")
+  deviceType String?  @default("desktop")
+  createdAt  DateTime @default(now())
+
+  @@map("cookie_consent_records")
+}
+
+model WebAnalyticsEvent {
+  id          String   @id @default(cuid())
+  eventType   String
+  path        String
+  referrer    String?
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  clickX      Float?
+  clickY      Float?
+  scrollDepth Int?
+  duration    Int?
+  deviceType  String?  @default("desktop")
+  country     String?  @default("Cameroon")
+  createdAt   DateTime @default(now())
+
+  @@map("web_analytics_events")
+}
+
+model CommunityProject {
+  id            String   @id @default(cuid())
+  title         String
+  description   String
+  communitySlug String
+  targetAmount  Decimal  @default(0) @db.Decimal(14, 2)
+  currentAmount Decimal  @default(0) @db.Decimal(14, 2)
+  status        String   @default("In Progress")
+  coverImage    String?
+  videoUrl      String?
+  images        String[] @default([])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([communitySlug])
+  @@map("community_projects")
+}
+
+enum RoleName {
+  CEO
+  MANAGER
+  EMPLOYEE
+  OUTREACH_MANAGER
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+  BLOCKED
+  CANCELLED
+  FAILED
+}
+
+enum TaskPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum ExpenseStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum MealStatus {
+  ATE
+  DID_NOT_EAT
+  DISPUTED
+}
+
+enum TransactionStatus {
+  PENDING
+  SETTLED
+  FLAGGED
+  FAILED
+}
+
+enum KycStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum NotificationType {
+  INFO
+  TASK
+  KYC
+  EXPENSE
+  MEAL
+  ANNOUNCEMENT
+  GOAL
+  PERFORMANCE
+}
+
+enum GoalStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum GoalScope {
+  COMPANY
+  DEPARTMENT
+  PERSONAL
+}
+
+enum DonationFrequency {
+  ONE_TIME
+  MONTHLY
+}
+
+enum PaymentMethod {
+  MTN
+  ORANGE
+  BANK
+}
+
+enum OutreachEventType {
+  SCHOLARSHIP
+  FUNDRAISER
+}
+
+enum OutreachEventStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  SCHEDULED
+}
+
+enum ApplicationLevel {
+  PRIMARY
+  SECONDARY
+  UNIVERSITY
+  NONE
+}
+
+enum ApplicationStatus {
+  PENDING
+  VERIFIED_BY_OUTREACH
+  APPROVED_BY_CEO
+  REJECTED
+}
+
+enum OutreachApplicationType {
+  SCHOLARSHIP
+  VOLUNTEER
+  FAMILY_IN_NEED
+  SCHOOL_REGISTRATION
+  GENERAL
+}
+
+enum CashCollectionStatus {
+  COMPLETE
+  PENDING
+  CANCELLED
+}
+
+model CashCollection {
+  id                 String               @id @default(cuid())
+  collectorId        String? // Preserved legacy reference; never used to grant Cash access.
+  cashUserId         String?
+  clientName         String
+  location           String
+  amountCollected    Decimal              @db.Decimal(14, 2)
+  outstandingBalance Decimal              @default(0) @db.Decimal(14, 2)
+  currency           String               @default("XAF")
+  collectionTime     DateTime             @default(now())
+  status             CashCollectionStatus @default(PENDING)
+  description        String               @db.Text
+  receiptUrl         String?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  legacyCollector    User?                @relation(fields: [collectorId], references: [id])
+  collector          CashUser?            @relation(fields: [cashUserId], references: [id], onDelete: Restrict)
+
+  @@index([cashUserId])
+  @@index([collectorId])
+  @@index([status])
+  @@index([collectionTime])
+  @@map("cash_collections")
+}
+
+model MarketerLead {
+  id                String    @id @default(cuid())
+  marketerId        String
+  prospectName      String
+  phone             String?
+  zone              String?
+  product           String?
+  status            String    @default("NEW_LEAD")
+  notes             String?
+  nextAction        String?
+  contactPermission Boolean   @default(true)
+  followUpDate      DateTime?
+  outcome           String?
+  evidenceRef       String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  marketer          User      @relation(fields: [marketerId], references: [id], onDelete: Cascade)
+
+  @@index([marketerId])
+  @@index([status])
+  @@index([zone])
+  @@map("marketer_leads")
+}
+
+model MarketerTerritory {
+  id             String   @id @default(cuid())
+  marketerId     String
+  zoneName       String
+  region         String   @default("Bonaberi")
+  targetAudience String?
+  schedule       String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  marketer       User     @relation(fields: [marketerId], references: [id], onDelete: Cascade)
+
+  @@index([marketerId])
+  @@map("marketer_territories")
+}
+
+model AuthSession {
+  id String @id @default(uuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  device String?
+  ipAddress String?
+  roleAtIssue RoleName
+  passwordVersion DateTime?
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  refreshTokens RefreshToken[]
+  @@index([userId, revokedAt])
+  @@map("auth_sessions")
+}
+
+model RateLimitBucket {
+  key String @id
+  hits Int
+  expiresAt DateTime
+  @@index([expiresAt])
+  @@map("rate_limit_buckets")
+}
+
+model SecureFile {
+  id String @id @default(uuid())
+  ownerId String?
+  scope String
+  parentId String?
+  fileName String
+  mimeType String
+  size Int
+  sha256 String
+  data Bytes @db.ByteA
+  scanStatus String @default("PENDING")
+  createdAt DateTime @default(now())
+  expiresAt DateTime?
+  @@index([ownerId, scope])
+  @@index([scope, parentId])
+  @@index([expiresAt])
+  @@map("secure_files")
+}
+
+// Cash identities and sessions are independent of company users and roles.
+model CashUser {
+  id String @id @default(uuid())
+  email String @unique
+  fullName String
+  phone String?
+  passwordHash String
+  passwordChangedAt DateTime @default(now())
+  status String @default("ACTIVE")
+  branch String @default("")
+  terminalId String @unique
+  jobLabel String @default("Cash Collector")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  collections CashCollection[]
+  sessions CashSession[]
+  @@map("cash_users")
+}
+model CashSession {
+  id String @id @default(uuid())
+  cashUserId String
+  user CashUser @relation(fields: [cashUserId], references: [id], onDelete: Restrict)
+  tokenHash String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  @@index([cashUserId, revokedAt])
+  @@map("cash_sessions")
+}
+model CashAuditLog {
+  id String @id @default(uuid())
+  actorId String?
+  action String
+  entity String
+  entityId String?
+  metadata Json?
+  createdAt DateTime @default(now())
+  @@index([actorId, createdAt])
+  @@map("cash_audit_logs")
+}
+
+model CashTransaction {
+  id           String            @id @default(cuid())
+  reference    String            @unique
+  entity       String
+  amount       Decimal           @db.Decimal(14, 2)
+  currency     String            @default("XAF")
+  amountInXaf  Decimal?          @db.Decimal(14, 2)
+  exchangeRate Decimal?          @db.Decimal(14, 4)
+  type         String
+  status       TransactionStatus @default(PENDING)
+  proofUrl     String?
+  settledAt    DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  description  String?
+  channel      String?
+  charges      Decimal?          @default(0) @db.Decimal(14, 2)
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("cash_transactions")
+  idempotencyKey String? @unique
+  requestHash String?
+  ledgerAppliedAt DateTime?
+
+}
+
+model CashFloatAccount {
+  id        String   @id @default(cuid())
+  channel   String   @unique
+  balance   Decimal  @default(0) @db.Decimal(14, 2)
+  totalIn   Decimal  @default(0) @db.Decimal(14, 2)
+  totalOut  Decimal  @default(0) @db.Decimal(14, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("cash_float_accounts")
+}
+
+model CashExchangeRate {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  flag        String   @default("")
+  buyingRate  String   @default("")
+  sellingRate String   @default("")
+  change24h   Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("cash_exchange_rates")
+}
+
+model CashDocument {
+  id String @id @default(uuid())
+  ownerId String?
+  scope String
+  parentId String?
+  fileName String
+  mimeType String
+  size Int
+  sha256 String
+  data Bytes @db.ByteA
+  scanStatus String @default("PENDING")
+  createdAt DateTime @default(now())
+  expiresAt DateTime?
+  @@index([ownerId, scope])
+  @@index([scope, parentId])
+  @@index([expiresAt])
+  @@map("cash_documents")
+}
+
+model CashKycSubmission {
+  id String @id @default(uuid())
+  applicantType String
+  applicantName String
+  email String?
+  phone String?
+  payload Json
+  documents Json
+  status String @default("PENDING")
+  rejectionReason String?
+  reviewedById String?
+  reviewedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([status])
+  @@map("cash_kyc_submissions")
+}

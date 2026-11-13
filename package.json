@@ -1,0 +1,25 @@
+{
+  "name": "enako-ecosystem",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Unified Enako Monorepo: Backend API, Enako OS, Cash Collections, and KYC Portal",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:backend": "npm run dev --workspace=apps/backend",
+    "dev:enako-os": "npm run dev --workspace=apps/enako-os",
+    "dev:cash": "npm run dev --workspace=apps/cash",
+    "dev:kyc": "npm run dev --workspace=apps/kyc",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "keywords": [
+    "enako",
+    "monorepo",
+    "fintech"
+  ],
+  "author": "Enako Team",
+  "license": "UNLICENSED"
+}

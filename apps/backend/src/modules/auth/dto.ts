@@ -1,0 +1,20 @@
+import { IsEmail, IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
+import { RoleName } from '../../enums';
+
+export class LoginDto {
+  @IsEmail()
+  email!: string;
+
+  @IsString()
+  @MinLength(8)
+  password!: string;
+
+  @IsOptional()
+  @IsString()
+  role?: string;
+}
+
+export class RefreshDto {
+  @IsString()
+  refreshToken!: string;
+}

@@ -1,0 +1,757 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  Search, 
+  MapPin, 
+  Clock, 
+  Camera, 
+  Save, 
+  UploadCloud, 
+  Check, 
+  X, 
+  Crosshair, 
+  AlertCircle, 
+  FileCheck, 
+  Calendar,
+  RotateCw
+} from 'lucide-react';
+import { Client, Collection, TransactionStatus, ViewType, TransactionType, DepositDestination, UserAccount, CollectorUser } from '../types';
+import { hasOperationalAccess } from '../utils/permissions';
+import { formatXAF, formatCommaNumber, cleanCommas } from '../data/mockData';
+
+interface NewCollectionViewProps {
+  clients: Client[];
+  accounts?: UserAccount[];
+  currentUser?: CollectorUser;
+  initialSelectedClient?: Client | null;
+  onSaveCollection: (collection: Omit<Collection, 'id'>) => Promise<void>;
+  onNavigate: (view: ViewType) => void;
+  isOffline?: boolean;
+}
+
+export const NewCollectionView: React.FC<NewCollectionViewProps> = ({
+  clients,
+  accounts = [],
+  currentUser,
+  initialSelectedClient,
+  onSaveCollection,
+  onNavigate,
+  isOffline,
+}) => {
+  const isCeoOrManager = hasOperationalAccess(currentUser);
+
+  const [selectedClient, setSelectedClient] = useState<Client | null>(initialSelectedClient || null);
+  const [clientEmail, setClientEmail] = useState<string>(initialSelectedClient?.email || '');
+  const [clientSearchQuery, setClientSearchQuery] = useState(
+    initialSelectedClient ? `${initialSelectedClient.id} - ${initialSelectedClient.name}` : ''
+  );
+  const [showClientDropdown, setShowClientDropdown] = useState(false);
+
+  const [targetAmount, setTargetAmount] = useState<string>(
+    initialSelectedClient && initialSelectedClient.outstandingBalance > 0 
+      ? String(initialSelectedClient.outstandingBalance) 
+      : ''
+  );
+  const [actualAmountCollected, setActualAmountCollected] = useState<string>(
+    initialSelectedClient && initialSelectedClient.outstandingBalance > 0 
+      ? String(initialSelectedClient.outstandingBalance) 
+      : ''
+  );
+  const [location, setLocation] = useState<string>(initialSelectedClient ? initialSelectedClient.address : '');
+  const [isLocating, setIsLocating] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  // Assigned collector state - locked to currentUser for cash collectors
+  const [assignedCollectorId, setAssignedCollectorId] = useState<string>(
+    currentUser && !isCeoOrManager
+      ? currentUser.terminalId || currentUser.id
+      : accounts[0]?.terminalId || ''
+  );
+
+  // Format current local time in ISO string for datetime-local
+  const getCurrentDateTimeLocal = () => {
+    const now = new Date();
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  };
+
+  const [collectionTime, setCollectionTime] = useState<string>(getCurrentDateTimeLocal());
+  const [transactionState, setTransactionState] = useState<TransactionStatus>('PENDING');
+  const [transactionType, setTransactionType] = useState<TransactionType>('COLLECTING');
+  const [depositDestination, setDepositDestination] = useState<DepositDestination | ''>('');
+  const [notes, setNotes] = useState<string>('');
+  
+  // Receipt file upload
+  const [receiptFile, setReceiptFile] = useState<{ name: string; url: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Error alert
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // When initialSelectedClient changes
+  useEffect(() => {
+    if (initialSelectedClient) {
+      setSelectedClient(initialSelectedClient);
+      setClientSearchQuery(`${initialSelectedClient.id} - ${initialSelectedClient.name}`);
+      setLocation(initialSelectedClient.address);
+      if (initialSelectedClient.email) {
+        setClientEmail(initialSelectedClient.email);
+      }
+      if (initialSelectedClient.outstandingBalance > 0 && !targetAmount) {
+        setTargetAmount(String(initialSelectedClient.outstandingBalance));
+        setActualAmountCollected(String(initialSelectedClient.outstandingBalance));
+      }
+    }
+  }, [initialSelectedClient]);
+
+  // Client search filtering
+  const matchingClients = clients.filter((c) => {
+    const q = clientSearchQuery.toLowerCase().trim();
+    if (!q) return true;
+    return (
+      c.name.toLowerCase().includes(q) ||
+      c.id.toLowerCase().includes(q) ||
+      c.address.toLowerCase().includes(q)
+    );
+  });
+
+  const handleSelectClient = (client: Client) => {
+    setSelectedClient(client);
+    setClientSearchQuery(`${client.id} - ${client.name}`);
+    setLocation(client.address);
+    if (client.email) {
+      setClientEmail(client.email);
+    }
+    if (!targetAmount && client.outstandingBalance > 0) {
+      setTargetAmount(String(client.outstandingBalance));
+      setActualAmountCollected(String(client.outstandingBalance));
+    }
+    setShowClientDropdown(false);
+    setErrorMessage(null);
+  };
+
+  // Location handler using Geolocation API
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setLocation('GPS: 4.0511° N, 9.7679° E (Douala Commercial Hub)');
+      return;
+    }
+
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setIsLocating(false);
+        const lat = pos.coords.latitude.toFixed(4);
+        const lng = pos.coords.longitude.toFixed(4);
+        setLocation(`GPS: ${lat}° N, ${lng}° E (Field Point)`);
+      },
+      () => {
+        setIsLocating(false);
+        setLocation(selectedClient ? selectedClient.address : 'Douala Port Terminal Sector A');
+      },
+      { timeout: 5000 }
+    );
+  };
+
+  // Handle Receipt photo with persistent Base64 Data URL
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files[0]) {
+      const file = files[0];
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64Url = event.target?.result as string;
+        setReceiptFile({
+          name: file.name,
+          url: base64Url,
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64Url = event.target?.result as string;
+        setReceiptFile({
+          name: file.name,
+          url: base64Url,
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const validateForm = () => {
+    if (!selectedClient) {
+      setErrorMessage('Please select a valid client from the directory or search.');
+      return false;
+    }
+    const numTarget = Number(cleanCommas(targetAmount));
+    if (isNaN(numTarget) || numTarget <= 0) {
+      setErrorMessage('Please enter a valid target collection amount in XAF.');
+      return false;
+    }
+    if (transactionType === 'COLLECTING' && !depositDestination) {
+      setErrorMessage('Please select a Deposit Location / Destination Bank.');
+      return false;
+    }
+    return true;
+  };
+
+  const handleSave = async () => {
+    if (isSubmitting) return;
+    if (!validateForm()) return;
+    if (!selectedClient) return;
+
+    setIsSubmitting(true);
+    try {
+      const numTarget = Number(cleanCommas(targetAmount));
+      const numActual = actualAmountCollected.trim() !== '' 
+        ? Number(cleanCommas(actualAmountCollected)) 
+        : (transactionState === 'COMPLETE' ? numTarget : 0);
+      const shortage = Math.max(0, numTarget - numActual);
+      const extra = Math.max(0, numActual - numTarget);
+
+      const dateObj = new Date(collectionTime);
+      const timeFormatted = `${dateObj.getHours().toString().padStart(2, '0')}:${dateObj.getMinutes().toString().padStart(2, '0')}`;
+
+      const targetCollector = accounts.find((a) => a.terminalId === assignedCollectorId || a.id === assignedCollectorId);
+      const collectorName = targetCollector ? targetCollector.fullName : 'Field Cash Collector';
+
+      await onSaveCollection({
+        clientId: selectedClient.id,
+        clientName: selectedClient.name,
+        amount: numActual > 0 ? numActual : numTarget,
+        targetAmount: numTarget,
+        actualAmountCollected: numActual,
+        shortageAmount: shortage,
+        extraAmount: extra,
+        time: timeFormatted,
+        timestamp: dateObj.toISOString(),
+        status: transactionState,
+        type: transactionType,
+        depositDestination: transactionType === 'COLLECTING' ? (depositDestination as DepositDestination) : undefined,
+        location: location || selectedClient.address,
+        notes: notes || undefined,
+        receiptName: receiptFile?.name,
+        receiptUrl: receiptFile?.url,
+        assignedCollectorId: targetCollector?.id || currentUser?.id,
+        assignedCollectorName: collectorName,
+        clientEmail: clientEmail.trim() || selectedClient.email || undefined,
+      });
+    } catch { setErrorMessage('The collection could not be saved. Please retry.'); }
+    finally { setIsSubmitting(false); }
+  };
+
+  const outstandingBal = selectedClient ? selectedClient.outstandingBalance : 0;
+
+  return (
+    <div className="max-w-3xl mx-auto space-y-8 pb-32">
+      {/* Page Header */}
+      <div className="border-b border-[#e5e5e5] pb-4">
+        <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-[#1a1c1c] mb-1">
+          New Collection
+        </h2>
+        <p className="text-sm text-[#4a4a4a]">
+          Record a new cash transaction from a client.
+        </p>
+      </div>
+
+      {errorMessage && (
+        <div className="p-4 bg-[#ffdad6] border border-[#e4beb9] text-[#93000a] text-xs font-bold flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{errorMessage}</span>
+        </div>
+      )}
+
+      {/* Collection Form */}
+      <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
+        {/* Client Selection */}
+        <div className="bg-[#ffffff] p-6 border border-[#e5e5e5] relative">
+          <label 
+            htmlFor="client_name"
+            className="block text-xs font-bold uppercase tracking-widest text-[#1a1c1c] mb-2"
+          >
+            Client Name
+          </label>
+
+          <div className="relative">
+            <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-[#4a4a4a]" />
+            <input
+              id="client_name"
+              type="text"
+              value={clientSearchQuery}
+              onChange={(e) => {
+                setClientSearchQuery(e.target.value);
+                setShowClientDropdown(true);
+                setSelectedClient(null);
+              }}
+              onFocus={() => setShowClientDropdown(true)}
+              placeholder="Search client name or ID..."
+              className="w-full h-12 pl-12 pr-4 bg-[#ffffff] border border-[#e5e5e5] focus:border-[#0891b2] focus:ring-1 focus:ring-[#0891b2] text-base text-[#1a1c1c] placeholder:text-[#4a4a4a] outline-none transition-all"
+            />
+
+            {clientSearchQuery && (
+              <button
+                type="button"
+                onClick={() => {
+                  setClientSearchQuery('');
+                  setSelectedClient(null);
+                }}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-[#5f5e5e] hover:text-[#1a1c1c]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Autocomplete dropdown */}
+          {showClientDropdown && (
+            <div className="absolute left-6 right-6 top-[calc(100%-8px)] z-30 bg-[#ffffff] border border-[#e5e5e5] shadow-lg max-h-60 overflow-y-auto divide-y divide-[#e5e5e5]">
+              {matchingClients.map((client) => (
+                <div
+                  key={client.id}
+                  onClick={() => handleSelectClient(client)}
+                  className="p-3.5 hover:bg-[#f3f3f3] cursor-pointer flex justify-between items-center text-left transition-colors"
+                >
+                  <div>
+                    <div className="text-sm font-bold text-[#1a1c1c]">
+                      {client.name}
+                    </div>
+                    <div className="text-xs text-[#5f5e5e] flex items-center gap-2 mt-0.5">
+                      <span className="font-mono font-semibold text-[#0891b2]">{client.id}</span>
+                      <span>•</span>
+                      <span>{client.address}</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[10px] uppercase font-bold text-[#5f5e5e]">Balance</div>
+                    <div className="text-xs font-mono font-bold text-[#1a1c1c]">
+                      {formatXAF(client.outstandingBalance)} XAF
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {matchingClients.length === 0 && (
+                <div className="p-4 text-center text-xs text-[#5f5e5e]">
+                  No matching clients found in directory.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Selected Client Profile Card (Phone, Email, KYC Verified) */}
+          {selectedClient && (
+            <div className="mt-4 p-4 bg-[#f8fafc] border border-[#e2e8f0] flex flex-col md:flex-row md:items-center md:justify-between gap-3 text-xs">
+              <div>
+                <div className="font-bold text-[#0f172a] text-sm flex items-center gap-2">
+                  <span>{selectedClient.name}</span>
+                  <span className="font-mono text-[10px] text-[#0891b2] font-semibold bg-[#ecfeff] px-1.5 py-0.5 border border-[#a5f3fc]">
+                    {selectedClient.id}
+                  </span>
+                </div>
+                <div className="text-[#64748b] flex flex-wrap items-center gap-3 mt-1.5">
+                  {selectedClient.phone && (
+                    <span className="font-medium text-[#334155]">📞 {selectedClient.phone}</span>
+                  )}
+                  <span className="font-medium text-[#0891b2]">✉ {selectedClient.email || clientEmail || 'Client email attached'}</span>
+                  <span>📍 {selectedClient.address}</span>
+                </div>
+              </div>
+              <div className="shrink-0 flex items-center gap-1.5 text-[11px] font-semibold text-[#15803d] bg-[#f0fdf4] px-3 py-1.5 border border-[#bbf7d0]">
+                <Check className="w-4 h-4 text-[#16a34a]" />
+                <span>PDF Receipt Dispatched via cash@enakoos.com</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Transaction Category: Collecting vs Payout */}
+        <div className="bg-[#ffffff] p-6 border border-[#e5e5e5]">
+          <label className="block text-xs font-bold uppercase tracking-widest text-[#1a1c1c] mb-3">
+            Transaction Category *
+          </label>
+          <div className="grid grid-cols-2 gap-4">
+            <button
+              type="button"
+              onClick={() => setTransactionType('COLLECTING')}
+              className={`h-12 border text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                transactionType === 'COLLECTING'
+                  ? 'bg-[#0891b2] text-white border-[#0891b2] shadow-sm'
+                  : 'bg-[#ffffff] text-[#4a4a4a] border-[#e5e5e5] hover:bg-[#f3f3f3]'
+              }`}
+            >
+              <span>Collecting (Cash In)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setTransactionType('PAYOUT')}
+              className={`h-12 border text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                transactionType === 'PAYOUT'
+                  ? 'bg-[#ba1a1a] text-white border-[#ba1a1a] shadow-sm'
+                  : 'bg-[#ffffff] text-[#4a4a4a] border-[#e5e5e5] hover:bg-[#f3f3f3]'
+              }`}
+            >
+              <span>Payout (Cash Out)</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Deposit Destination Dropdown (Only when Collecting) */}
+        {transactionType === 'COLLECTING' && (
+          <div className="bg-[#ffffff] p-6 border border-[#e5e5e5]">
+            <label 
+              htmlFor="deposit_destination"
+              className="block text-xs font-bold uppercase tracking-widest text-[#1a1c1c] mb-2"
+            >
+              Deposit Location / Destination Bank *
+            </label>
+            <select
+              id="deposit_destination"
+              value={depositDestination}
+              onChange={(e) => {
+                setDepositDestination(e.target.value as DepositDestination);
+                setErrorMessage(null);
+              }}
+              className="w-full h-12 px-4 bg-[#ffffff] border border-[#e5e5e5] focus:border-[#0891b2] focus:ring-1 focus:ring-[#0891b2] text-sm text-[#1a1c1c] font-bold outline-none cursor-pointer"
+            >
+              <option value="">-- Select Bank / Deposit Location --</option>
+              <option value="ECOBANK">ECOBANK</option>
+              <option value="AFRILAND FIRST BANK">AFRILAND FIRST BANK</option>
+              <option value="UBA">UBA</option>
+              <option value="MTN SPECTRUM">MTN SPECTRUM</option>
+            </select>
+          </div>
+        )}
+
+        {/* Target and Actual Received Amounts */}
+        <div className="bg-[#ffffff] p-4 sm:p-6 border border-[#e5e5e5] space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Target Amount */}
+            <div>
+              <label 
+                htmlFor="target_amount"
+                className="block text-xs font-bold uppercase tracking-widest text-[#4a4a4a] mb-2"
+              >
+                Target / Expected Amount
+              </label>
+              <div className="relative flex items-center border border-[#e5e5e5] bg-[#ffffff] focus-within:border-[#0891b2] transition-all">
+                <span className="pl-3 sm:pl-4 font-mono text-sm sm:text-base font-bold text-[#4a4a4a] select-none shrink-0">
+                  XAF
+                </span>
+                <input
+                  id="target_amount"
+                  type="text"
+                  value={formatCommaNumber(targetAmount)}
+                  onChange={(e) => {
+                    const clean = cleanCommas(e.target.value);
+                    setTargetAmount(clean);
+                    if (!actualAmountCollected || actualAmountCollected === targetAmount) {
+                      setActualAmountCollected(clean);
+                    }
+                    setErrorMessage(null);
+                  }}
+                  placeholder="0"
+                  className="w-full h-12 sm:h-14 px-3 bg-transparent border-none focus:ring-0 text-xl sm:text-2xl font-bold text-[#1a1c1c] text-right font-mono tabular-nums outline-none"
+                />
+              </div>
+              <p className="text-[11px] text-[#5f5e5e] mt-1">Total expected volume to collect</p>
+            </div>
+
+            {/* Actually Received Amount */}
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <label 
+                  htmlFor="actual_amount"
+                  className="block text-xs font-bold uppercase tracking-widest text-[#0891b2]"
+                >
+                  Actually Received
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setActualAmountCollected(targetAmount)}
+                  className="text-[10px] text-[#0891b2] hover:underline font-bold"
+                >
+                  Full Amount Paid
+                </button>
+              </div>
+              <div className="relative flex items-center border-2 border-[#0891b2] bg-[#ffffff] focus-within:ring-1 focus-within:ring-[#0891b2] transition-all">
+                <span className="pl-3 sm:pl-4 font-mono text-sm sm:text-base font-bold text-[#0891b2] select-none shrink-0">
+                  XAF
+                </span>
+                <input
+                  id="actual_amount"
+                  type="text"
+                  value={formatCommaNumber(actualAmountCollected)}
+                  onChange={(e) => {
+                    setActualAmountCollected(cleanCommas(e.target.value));
+                    setErrorMessage(null);
+                  }}
+                  placeholder="0"
+                  className="w-full h-12 sm:h-14 px-3 bg-transparent border-none focus:ring-0 text-xl sm:text-2xl font-bold text-[#1a1c1c] text-right font-mono tabular-nums outline-none"
+                />
+              </div>
+              <p className="text-[11px] text-[#0891b2] mt-1">Cash handed over by client on arrival</p>
+            </div>
+          </div>
+
+          {/* Live Shortfall / Lacking Balance Box */}
+          {(() => {
+            const numT = Number(cleanCommas(targetAmount)) || 0;
+            const numA = Number(cleanCommas(actualAmountCollected)) || 0;
+            const short = Math.max(0, numT - numA);
+            const extra = Math.max(0, numA - numT);
+
+            if (short > 0) {
+              return (
+                <div className="p-3.5 bg-[#fef2f2] border border-[#fecaca] text-[#991b1b] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-[#dc2626] shrink-0" />
+                    <div>
+                      <span className="font-bold">Balance Lacking (Shortfall): </span>
+                      <span className="font-mono font-extrabold text-sm">{formatXAF(short)} XAF</span>
+                    </div>
+                  </div>
+                  <span className="self-start sm:self-auto text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 bg-[#fee2e2] border border-[#fca5a5]">
+                    Lacking Amount Logged on Dashboard
+                  </span>
+                </div>
+              );
+            } else if (extra > 0) {
+              return (
+                <div className="p-3 bg-[#f0fdf4] border border-[#bbf7d0] text-[#166534] flex items-center justify-between text-xs font-semibold">
+                  <div className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-[#16a34a] shrink-0" />
+                    <span>Surplus payment of {formatXAF(extra)} XAF received over target.</span>
+                  </div>
+                </div>
+              );
+            } else if (numT > 0) {
+              return (
+                <div className="p-3 bg-[#f0fdf4] border border-[#bbf7d0] text-[#166534] flex items-center justify-between text-xs font-semibold">
+                  <div className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-[#16a34a] shrink-0" />
+                    <span>Full target collection matched. 0 XAF shortage.</span>
+                  </div>
+                </div>
+              );
+            }
+            return null;
+          })()}
+        </div>
+
+        {/* Details Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Location */}
+          <div className="bg-[#ffffff] p-6 border border-[#e5e5e5] flex flex-col justify-between">
+            <div>
+              <label 
+                htmlFor="location"
+                className="block text-xs font-bold uppercase tracking-widest text-[#1a1c1c] mb-2"
+              >
+                Location / Address
+              </label>
+              <input
+                id="location"
+                type="text"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="Enter collection address"
+                className="w-full h-12 px-4 bg-[#ffffff] border border-[#e5e5e5] focus:border-[#0891b2] focus:ring-1 focus:ring-[#0891b2] text-sm text-[#1a1c1c] mb-4 outline-none transition-all"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={handleUseCurrentLocation}
+              disabled={isLocating}
+              className="flex items-center justify-center gap-2 text-[#0891b2] text-xs font-bold uppercase tracking-widest hover:bg-[#ecfeff] px-4 py-2.5 border border-[#e5e5e5] transition-colors w-full cursor-pointer"
+            >
+              <Crosshair className={`w-4 h-4 ${isLocating ? 'animate-spin' : ''}`} />
+              <span>{isLocating ? 'Locating...' : 'Use Current Location'}</span>
+            </button>
+          </div>
+
+          {/* Timestamp & Status */}
+          <div className="space-y-6">
+            <div className="bg-[#ffffff] p-6 border border-[#e5e5e5]">
+              <label 
+                htmlFor="timestamp"
+                className="block text-xs font-bold uppercase tracking-widest text-[#1a1c1c] mb-2"
+              >
+                Collection Time
+              </label>
+              <div className="relative">
+                <Calendar className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-[#4a4a4a] pointer-events-none" />
+                <input
+                  id="timestamp"
+                  type="datetime-local"
+                  value={collectionTime}
+                  onChange={(e) => setCollectionTime(e.target.value)}
+                  className="w-full h-12 pl-12 pr-4 bg-[#ffffff] border border-[#e5e5e5] focus:border-[#0891b2] focus:ring-1 focus:ring-[#0891b2] font-mono text-sm text-[#1a1c1c] outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="bg-[#ffffff] p-6 border border-[#e5e5e5]">
+              <label 
+                htmlFor="status"
+                className="block text-xs font-bold uppercase tracking-widest text-[#1a1c1c] mb-2"
+              >
+                Initial Transaction State
+              </label>
+              <select
+                id="status"
+                value={transactionState}
+                onChange={(e) => setTransactionState(e.target.value as TransactionStatus)}
+                className="w-full h-12 px-4 bg-[#ffffff] border border-[#e5e5e5] focus:border-[#0891b2] focus:ring-1 focus:ring-[#0891b2] text-sm text-[#1a1c1c] font-bold outline-none cursor-pointer uppercase mb-4"
+              >
+                <option value="PENDING">PENDING (Task Assigned)</option>
+                <option value="COMPLETE">COMPLETE (Settled Immediately)</option>
+                <option value="CANCELLED">CANCELLED</option>
+              </select>
+
+              <label 
+                htmlFor="collector"
+                className="block text-xs font-bold uppercase tracking-widest text-[#0891b2] mb-2"
+              >
+                Assigned Cash Collector
+              </label>
+              {isCeoOrManager ? (
+                <select
+                  id="collector"
+                  value={assignedCollectorId}
+                  onChange={(e) => setAssignedCollectorId(e.target.value)}
+                  className="w-full h-12 px-4 bg-[#ffffff] border border-[#e5e5e5] focus:border-[#0891b2] focus:ring-1 focus:ring-[#0891b2] text-sm text-[#1a1c1c] font-bold outline-none cursor-pointer"
+                >
+                  <option value="">-- Select Field Collector --</option>
+                  {accounts.map((acc) => (
+                    <option key={acc.id} value={acc.terminalId}>
+                      {acc.fullName || `${acc.firstName} ${acc.lastName}`} ({acc.terminalId} - {acc.branch})
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="w-full h-12 px-4 bg-[#f2f2f2] border border-[#d6d6d6] text-sm text-[#1a1c1c] font-bold flex items-center justify-between">
+                  <span>{currentUser?.name || 'Logged-In Agent'} ({currentUser?.terminalId || 'TRM-ACTIVE'} - {currentUser?.branch || 'Main Hub'})</span>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#0891b2] bg-[#ecfeff] px-2 py-0.5 border border-[#a5f3fc]">
+                    Collector (Default)
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Notes */}
+        <div className="bg-[#ffffff] p-6 border border-[#e5e5e5]">
+          <label 
+            htmlFor="notes"
+            className="block text-xs font-bold uppercase tracking-widest text-[#1a1c1c] mb-2"
+          >
+            Notes
+          </label>
+          <textarea
+            id="notes"
+            rows={3}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="What happened with the client? (e.g. Partial payment agreed)"
+            className="w-full p-4 bg-[#ffffff] border border-[#e5e5e5] focus:border-[#0891b2] focus:ring-1 focus:ring-[#0891b2] text-sm text-[#1a1c1c] resize-none outline-none"
+          />
+        </div>
+
+        {/* Money Photo Proof Dropzone */}
+        <div
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+          className="bg-[#ffffff] p-8 border border-[#e5e5e5] text-center"
+        >
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept="image/*"
+            className="hidden"
+          />
+
+          <div className="w-16 h-16 mx-auto bg-[#ecfeff] rounded-full flex items-center justify-center mb-3 text-[#0891b2] border border-[#a5f3fc]">
+            <Camera className="w-7 h-7" />
+          </div>
+
+          <h3 className="text-lg font-bold text-[#1a1c1c] mb-1">
+            Upload Photo of Money Took (Proof)
+          </h3>
+          <p className="text-xs text-[#4a4a4a] mb-6">
+            Take or upload a clear photo of the physical cash collected as proof.
+          </p>
+
+          {receiptFile ? (
+            <div className="flex flex-col items-center gap-3 p-4 bg-[#ecfeff] border border-[#a5f3fc]">
+              <img
+                src={receiptFile.url}
+                alt="Cash Proof Preview"
+                className="max-h-52 max-w-full object-contain rounded border border-[#a5f3fc] bg-white shadow-xs"
+              />
+              <div className="flex items-center gap-3 text-xs">
+                <FileCheck className="w-4 h-4 text-[#0891b2]" />
+                <span className="font-mono font-bold text-[#0e7490] max-w-[200px] truncate">
+                  Proof: {receiptFile.name}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setReceiptFile(null)}
+                  className="text-[#ba1a1a] hover:underline font-bold cursor-pointer"
+                >
+                  Remove & Re-snap
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="bg-[#0891b2] text-white border border-[#06b6d4] hover:bg-[#0e7490] text-xs font-bold h-12 px-8 transition-colors uppercase tracking-widest cursor-pointer shadow-sm"
+            >
+              Upload Photo Proof
+            </button>
+          )}
+        </div>
+      </form>
+
+      {/* Fixed Bottom Action Bar */}
+      <div className="fixed bottom-0 left-0 md:left-64 right-0 bg-[#ffffff] border-t border-[#e5e5e5] p-4 z-40">
+        <div className="max-w-3xl mx-auto flex gap-4">
+          <button
+            type="button"
+            disabled={isSubmitting}
+            onClick={() => handleSave()}
+            className="w-full bg-[#0891b2] text-white h-12 text-xs font-bold hover:bg-[#0e7490] active:scale-[0.99] transition-all flex items-center justify-center gap-2 uppercase tracking-widest cursor-pointer shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {isSubmitting ? (
+              <>
+                <RotateCw className="w-4 h-4 animate-spin text-white" />
+                <span>Submitting Collection...</span>
+              </>
+            ) : (
+              <>
+                <UploadCloud className="w-4 h-4" />
+                <span>Submit Collection Directly</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
