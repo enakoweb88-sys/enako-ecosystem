@@ -70,3 +70,4 @@ The GitHub Actions workflow triggers on pushes and pull requests to `dev`, `deve
 2. **Backend CI:** Installs dependencies, runs `npx prisma generate`, typechecks, and builds the NestJS application.
 3. **Frontend Matrix CI:** Runs parallel linting and production builds for `enako-os`, `cash`, and `kyc`.
 4. **Summary & Dev Gate:** Validates all active checks before staging or deploying.
+
