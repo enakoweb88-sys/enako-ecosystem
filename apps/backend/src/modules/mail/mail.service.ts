@@ -73,7 +73,7 @@ export class MailService {
     // The CEO's contact address is separate from the credential used to log in.
     // Apply the override centrally so existing system/security/task mail callers
     // that still supply the login address also reach the real inbox.
-    if (this.prisma) {
+    if (this.prisma && !options.exactRecipient) {
       try {
         const executives = await this.prisma.user.findMany({ where: { email: { in: cleanRecipients }, role: { name: 'CEO' } }, select: { email: true, personalEmail: true } });
         const overrides = new Map(executives.map(executive => [executive.email.toLowerCase(), notificationAddress(executive)]));

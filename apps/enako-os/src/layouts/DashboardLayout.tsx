@@ -90,6 +90,7 @@ function EnterpriseDashboardLayout() {
 
   const getEffectiveRole = () => {
     if (userRole === 'ceo') return 'ceo';
+    if (userRole === 'cto') return 'cto';
     if (userRole === 'manager') return 'manager';
     if (userRole === 'outreach_manager' || userDept.includes('outreach')) return 'outreach_manager';
     if (userRole === 'digital' || userDept.includes('digital') || userDept.includes('marketing')) return 'digital';
@@ -113,7 +114,7 @@ function EnterpriseDashboardLayout() {
 
   // Route to Rail Category Resolver
   const getCategoryForPath = (path: string): string => {
-    if (path.startsWith('/app/dashboard') || path.startsWith('/app/reports') || path.startsWith('/app/metrics')) {
+    if (path.startsWith('/app/dashboard') || path.startsWith('/app/passwords-and-keys') || path.startsWith('/app/reports') || path.startsWith('/app/metrics')) {
       return 'dashboard';
     }
     if (
@@ -289,14 +290,15 @@ function EnterpriseDashboardLayout() {
       icon: LayoutDashboard,
       landingPath: '/app/dashboard',
       actionButton: { label: '+ View Reports', path: '/app/reports' },
-      roles: ['ceo', 'manager', 'finance', 'bd', 'digital', 'support', 'admin', 'employee', 'outreach_manager'],
+      roles: ['ceo', 'cto', 'manager', 'finance', 'bd', 'digital', 'support', 'admin', 'employee', 'outreach_manager'],
       sections: [
         {
           title: 'EXECUTIVE OVERVIEW',
           items: [
-            { label: 'Dashboard', path: '/app/dashboard', icon: LayoutDashboard, roles: ['ceo', 'manager', 'finance', 'bd', 'digital', 'support', 'admin', 'employee', 'outreach_manager'] },
-            { label: 'Reports • Submit & Track', path: '/app/reports', icon: FileText, roles: ['ceo', 'manager', 'finance', 'admin', 'outreach_manager', 'employee', 'bd', 'digital', 'support'] },
-            { label: 'Report History', path: '/app/reports/history', icon: FileText, roles: ['ceo', 'manager', 'outreach_manager'] },
+            { label: 'Dashboard', path: '/app/dashboard', icon: LayoutDashboard, roles: ['ceo', 'cto', 'manager', 'finance', 'bd', 'digital', 'support', 'admin', 'employee', 'outreach_manager'] },
+            ...((userRole === 'ceo' || userRole === 'cto' || /engineering|software|developer|technology/i.test(userDept)) ? [{ label: 'Passwords and Keys', path: '/app/passwords-and-keys', icon: Lock, roles: ['ceo', 'cto', 'manager', 'employee', 'engineering'] }] : []),
+            { label: 'Reports • Submit & Track', path: '/app/reports', icon: FileText, roles: ['ceo', 'cto', 'manager', 'finance', 'admin', 'outreach_manager', 'employee', 'bd', 'digital', 'support'] },
+            { label: 'Report History', path: '/app/reports/history', icon: FileText, roles: ['ceo', 'cto', 'manager', 'outreach_manager'] },
           ]
         }
       ],
@@ -416,14 +418,14 @@ function EnterpriseDashboardLayout() {
       icon: Users,
       landingPath: '/app/employees',
       actionButton: { label: '+ New Employee', path: '/app/employees/new' },
-      roles: ['ceo', 'manager', 'admin', 'employee', 'finance', 'bd', 'digital', 'support', 'outreach_manager'],
+      roles: ['ceo', 'cto', 'manager', 'admin', 'employee', 'finance', 'bd', 'digital', 'support', 'outreach_manager'],
       sections: [
         {
           title: 'HUMAN RESOURCES',
           items: [
-            { label: 'Employees', path: '/app/employees', icon: Users, roles: ['ceo', 'manager', 'admin', 'finance'] },
-            { label: 'Leaves', path: '/app/leaves', icon: Calendar, roles: ['ceo', 'manager', 'admin', 'employee'] },
-            { label: 'Profile', path: '/app/profile', icon: User, roles: ['ceo', 'manager', 'finance', 'bd', 'digital', 'support', 'admin', 'employee', 'outreach_manager'] },
+            { label: 'Employees', path: '/app/employees', icon: Users, roles: ['ceo', 'cto', 'manager', 'admin', 'finance'] },
+            { label: 'Leaves', path: '/app/leaves', icon: Calendar, roles: ['ceo', 'cto', 'manager', 'admin', 'employee'] },
+            { label: 'Profile', path: '/app/profile', icon: User, roles: ['ceo', 'cto', 'manager', 'finance', 'bd', 'digital', 'support', 'admin', 'employee', 'outreach_manager'] },
           ]
         }
       ],

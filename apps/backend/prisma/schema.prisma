@@ -33,6 +33,7 @@ model Department {
 }
 
 model User {
+  vaultAccess VaultAccess[]
   id                   String                @id @default(cuid())
   email                String                @unique
   passwordHash         String
@@ -1064,6 +1065,7 @@ model CommunityProject {
 
 enum RoleName {
   CEO
+  CTO
   MANAGER
   EMPLOYEE
   OUTREACH_MANAGER
@@ -1258,6 +1260,7 @@ model MarketerTerritory {
 }
 
 model AuthSession {
+  vaultAccess VaultAccess?
   id String @id @default(uuid())
   userId String
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1429,4 +1432,37 @@ model CashKycSubmission {
   updatedAt DateTime @updatedAt
   @@index([status])
   @@map("cash_kyc_submissions")
+}
+
+model VaultAccess {
+  sessionId String @id
+  session AuthSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash String?
+  attempts Int @default(0)
+  requestedAt DateTime @default(now()) @db.Timestamptz(6)
+  expiresAt DateTime @db.Timestamptz(6)
+  tokenHash String?
+  unlockedUntil DateTime? @db.Timestamptz(6)
+  @@index([requestedAt(sort: Desc)], map: "vault_access_requested_idx")
+  @@map("vault_access")
+}
+
+model VaultPlatform {
+  id String @id
+  // Case-insensitive name uniqueness is enforced by the SQL expression index.
+  name String
+  configs VaultConfig[]
+  @@map("vault_platforms")
+}
+
+model VaultConfig {
+  platformId String
+  platform VaultPlatform @relation(fields: [platformId], references: [id], onDelete: Cascade)
+  environment String
+  ciphertext String
+  version Int @default(1)
+  @@id([platformId, environment])
+  @@map("vault_configs")
 }

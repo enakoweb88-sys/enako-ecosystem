@@ -13,7 +13,7 @@ export class PermissionPolicy {
   constructor(private readonly config: ConfigService) {}
   onModuleInit() { this.permissions({ sub: 'configuration-check', email: '', role: 'EMPLOYEE' }); }
   permissions(user: JwtUser): OsPermission[] {
-    const roleDefaults: OsPermission[] = user.role === 'CEO' ? [...OS_PERMISSIONS] : user.role === 'MANAGER' ? OS_PERMISSIONS.filter(p => p !== 'audit.read') : user.role === 'OUTREACH_MANAGER' ? ['outreach.manage'] : [];
+    const roleDefaults: OsPermission[] = ['CEO', 'CTO'].includes(user.role) ? [...OS_PERMISSIONS] : user.role === 'MANAGER' ? OS_PERMISSIONS.filter(p => p !== 'audit.read') : user.role === 'OUTREACH_MANAGER' ? ['outreach.manage'] : [];
     let grants: Record<string, OsPermission[]> = {};
     try {
       const value = JSON.parse(this.config.get<string>('OS_PERMISSION_GRANTS') || '{}');

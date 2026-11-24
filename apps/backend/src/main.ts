@@ -35,7 +35,7 @@ async function bootstrap() {
     origin: corsOrigins,
     credentials: false,
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'Cf-Access-Jwt-Assertion', 'X-Payment-Status-Token'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'Cf-Access-Jwt-Assertion', 'X-Payment-Status-Token', 'X-Vault-Token'],
   });
 
   app.useGlobalPipes(
@@ -48,7 +48,7 @@ async function bootstrap() {
   );
 
   const port = config.get<number>('PORT') ?? 5000;
-  await app.listen(port);
+  await app.listen(port, config.get<string>('GATEWAY_ACCESS_MODE') === 'local-only' ? '127.0.0.1' : '0.0.0.0');
   console.log(`🚀 ENAKO OS Backend running on port ${port}`);
   // Verification runs only against the isolated local test database.
   if (process.env.NODE_ENV === 'test' && process.env.ENAKO_SENTRY_VERIFY === '1') {

@@ -29,6 +29,7 @@ export default function Dashboard() {
   const activeDepartment = () => {
     if (isMarketer) return 'marketer';
     if (role === 'ceo') return 'ceo';
+    if (role === 'cto') return 'engineering';
     if (role === 'manager' || dept.includes('management') || dept.includes('executive') || dept.includes('strategy') || dept.includes('director')) return 'manager';
     if (role === 'outreach_manager') return 'outreach';
 

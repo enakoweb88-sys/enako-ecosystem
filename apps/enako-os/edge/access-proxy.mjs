@@ -43,7 +43,7 @@ export default {
     // A fixed destination prevents an open proxy. Never forward website cookies,
     // service secrets, client IP/host overrides, or client-supplied redirect targets.
     const headers = new Headers();
-    for (const name of ['authorization', 'content-type', 'accept', 'origin', 'idempotency-key', 'x-payment-status-token', 'range', 'sec-websocket-protocol']) {
+    for (const name of ['authorization', 'content-type', 'accept', 'origin', 'idempotency-key', 'x-payment-status-token', 'x-vault-token', 'range', 'sec-websocket-protocol']) {
       const value = request.headers.get(name);
       if (value !== null) headers.set(name, value);
     }

@@ -1,8 +1,10 @@
 import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { ArrowLeft, ArrowRight, Building2, Terminal, BriefcaseBusiness, Users, Globe, ShieldCheck } from 'lucide-react';
+import './RoleSelect.css';
 
 interface RoleCard {
-  role: 'CEO' | 'MANAGER' | 'EMPLOYEE' | 'OUTREACH_MANAGER';
+  role: 'CEO' | 'CTO' | 'MANAGER' | 'EMPLOYEE' | 'OUTREACH_MANAGER';
   title: string;
   subtitle: string;
   description: string;
@@ -20,6 +22,15 @@ const ROLES: RoleCard[] = [
     color: 'text-[#001F5B]',
     badgeBg: 'bg-[#001F5B]/10 text-[#001F5B] border-[#001F5B]/20',
     borderHover: 'hover:border-[#00C2C7] hover:shadow-[#001F5B]/10',
+  },
+  {
+    role: 'CTO',
+    title: 'CTO Workspace',
+    subtitle: 'Chief Technology Officer',
+    description: 'General oversight of the IT & engineering department, system architecture, telemetry, server health, credentials, and deployments.',
+    color: 'text-[#00C2C7]',
+    badgeBg: 'bg-[#00C2C7]/15 text-[#001F5B] border-[#00C2C7]/30',
+    borderHover: 'hover:border-[#00C2C7] hover:shadow-[#00C2C7]/10',
   },
   {
     role: 'MANAGER',
@@ -53,102 +64,20 @@ const ROLES: RoleCard[] = [
 export default function RoleSelect() {
   const navigate = useNavigate();
 
-  const handleSelect = (role: 'CEO' | 'MANAGER' | 'EMPLOYEE' | 'OUTREACH_MANAGER') => {
+  const handleSelect = (role: 'CEO' | 'CTO' | 'MANAGER' | 'EMPLOYEE' | 'OUTREACH_MANAGER') => {
     sessionStorage.setItem('enako_selected_role', role);
     navigate(`/login?role=${role}`);
   };
 
-  return (
-    <div className="min-h-screen font-sans bg-[#FAF9FC] text-[#1E293B] antialiased flex flex-col justify-between selection:bg-[#00C2C7] selection:text-[#001F5B]">
-      
-      {/* ── HEADER NAVIGATION ── */}
-      <header className="bg-white/95 backdrop-blur-md border-b border-slate-200/60 px-4 sm:px-6 lg:px-12 py-3.5 sm:py-4 transition-all sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          
-          {/* Back to Homepage Link */}
-          <Link
-            to="/"
-            className="text-xs sm:text-sm font-extrabold text-[#001F5B] hover:text-[#00C2C7] transition-colors"
-          >
-            ← Back to Homepage
-          </Link>
-
-          {/* Real Company Logo & Title */}
-          <Link to="/" className="flex items-center gap-2.5 sm:gap-3 group">
-            <img
-              src="/logo.png"
-              alt="ENAKO Logo"
-              className="h-8 sm:h-10 w-auto object-contain group-hover:scale-105 transition-transform"
-            />
-            <div className="flex flex-col">
-              <span className="font-black text-lg sm:text-xl tracking-tight text-[#0F172A] leading-none">
-                ENAKO
-              </span>
-              <span className="text-[9px] sm:text-[10px] font-bold tracking-widest text-[#00C2C7] uppercase mt-0.5">
-                CLOUD SYSTEM
-              </span>
-            </div>
-          </Link>
-
-        </div>
-      </header>
-
-      {/* ── MAIN CONTENT ── */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-8 sm:py-12 flex-1 flex flex-col justify-center items-center w-full">
-        
-        {/* Title & Subtitle */}
-        <div className="text-center mb-8 sm:mb-12 flex flex-col items-center">
-          <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black text-[#0F172A] tracking-tight mb-3 sm:mb-4">
-            Select Your Role Workspace
-          </h1>
-          <p className="text-[#475569] text-sm sm:text-base max-w-md mx-auto leading-relaxed font-normal">
-            Choose your designated enterprise authority to enter your customized dashboard interface.
-          </p>
-        </div>
-
-        {/* Role Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full max-w-6xl">
-          {ROLES.map((card) => (
-            <button
-              key={card.role}
-              type="button"
-              onClick={() => handleSelect(card.role)}
-              className={`group flex flex-col justify-between text-left p-7 rounded-3xl bg-white border border-slate-200/80 shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer hover:-translate-y-1.5 ${card.borderHover}`}
-            >
-              <div>
-                {/* Subtitle Badge */}
-                <span className={`inline-block text-[11px] font-extrabold uppercase tracking-wider px-3 py-1 rounded-full border mb-4 ${card.badgeBg}`}>
-                  {card.subtitle}
-                </span>
-
-                {/* Title */}
-                <h2 className="font-black text-xl text-[#0F172A] mb-2 tracking-tight group-hover:text-[#001F5B] transition-colors">
-                  {card.title}
-                </h2>
-
-                {/* Description */}
-                <p className="text-[#64748B] text-xs leading-relaxed font-normal">
-                  {card.description}
-                </p>
-              </div>
-
-              {/* Action Link */}
-              <div className={`mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-extrabold ${card.color}`}>
-                <span>Authenticate Session</span>
-                <span className="transform group-hover:translate-x-1 transition-transform">→</span>
-              </div>
-            </button>
-          ))}
-        </div>
-
-      </main>
-
-      {/* ── FOOTER ── */}
-      <footer className="w-full bg-white border-t border-slate-200/60 py-6 px-6 text-center text-[#64748B] text-xs font-medium">
-        <p>&copy; {new Date().getFullYear()} ENAKO Cloud System. Encrypted Role Access Portal.</p>
-      </footer>
-
-    </div>
-  );
+  const icons = { CEO: Building2, CTO: Terminal, MANAGER: BriefcaseBusiness, EMPLOYEE: Users, OUTREACH_MANAGER: Globe };
+  return <div className="os-roles">
+    <header className="os-roles-header"><Link to="/" className="os-roles-brand" aria-label="ENAKO OS home">ENAKO<span>OS</span></Link><Link to="/" className="os-roles-back"><ArrowLeft size={14} />Back to home</Link></header>
+    <main className="os-roles-main">
+      <div className="os-roles-intro"><div><p className="os-roles-eyebrow"><span />YOUR ORGANIZATION, CONNECTED</p><h1>A workspace for<br />every part of your team.</h1></div><div className="os-roles-intro-note"><p>Choose where you work.<br />We’ll take you to your sign-in page.</p><span><ShieldCheck size={14} />Your permissions stay with your account.</span></div></div>
+      <div className="os-roles-section-heading"><span>CHOOSE YOUR WORKSPACE</span><span>05 WORKSPACES</span></div>
+      <div className="os-roles-grid">{ROLES.map((card, index) => { const Icon = icons[card.role]; return <button type="button" key={card.role} className={`os-roles-card${index <= 1 ? ' os-roles-card-executive' : ''}`} onClick={() => handleSelect(card.role)}><div className="os-roles-card-top"><div className="os-roles-icon"><Icon size={22} strokeWidth={1.6} /></div><span>0{index + 1}</span></div><div className="os-roles-card-body"><p>{card.subtitle}</p><h2>{card.title}</h2><div>{card.description}</div></div><div className="os-roles-card-action"><span>Continue to sign in</span><ArrowRight size={17} /></div></button>; })}</div>
+      <div className="os-roles-help"><span className="os-roles-help-icon"><Users size={16} /></span><p><strong>Not sure which workspace is yours?</strong> Your workspace administrator can help you choose the right one.</p></div>
+    </main>
+    <footer className="os-roles-footer"><span>© {new Date().getFullYear()} ENAKO Cloud System</span><span>One organization. One workspace.</span></footer>
+  </div>;
 }
-

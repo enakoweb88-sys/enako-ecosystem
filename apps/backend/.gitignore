@@ -30,6 +30,7 @@ logs/
 
 .cache/
 .test-runtime/
+.local-dev/
 coverage/
 .private-backups/
 .env.sentry-build-plugin

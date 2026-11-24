@@ -83,6 +83,23 @@ npm run dev
 
 The server will be available at `http://localhost:5000`
 
+`npm run dev` enables the existing `local-only` gateway mode for this process.
+Cloudflare Access is skipped only for loopback connections; normal application
+login, permissions, and vault email authentication remain required. Production
+commands keep the configured gateway enforcement.
+
+For ENAKOOS, run `npm run dev` from `apps/enako-os` in a second terminal and open
+`http://localhost:3000`. Its development environment targets
+`http://127.0.0.1:5000/api/v1`. Restart both processes after changing configuration.
+Use `apps/enako-os/.env.development.local` to override that URL for a different
+local backend port. The development command creates and migrates a separate
+persistent PostgreSQL database in `.local-dev/` and generates its login-security
+settings. It does not use or migrate the remote database in `.env`. Initial test
+login details are saved in `.local-dev/login.txt`; select **Staff Member** to enter
+the developer dashboard. Restarting development preserves local data. Keep
+`.local-dev/` private and out of source control. Vault email still uses the mail
+configuration in `.env`, with codes sent to the configured vault owner.
+
 ## Available Scripts
 
 - `npm run dev` - Start development server with hot reload

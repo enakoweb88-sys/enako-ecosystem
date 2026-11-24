@@ -1,3 +1,4 @@
+import { VaultModule } from './modules/vault/vault.module';
 import { APP_GUARD } from '@nestjs/core';
 import { SentryModule } from '@sentry/nestjs/setup';
 import { GatewayAccessGuard } from './common/gateway-access';
@@ -97,6 +98,7 @@ import { HealthModule } from './modules/health/health.module';
     MailModule,
     SecurityModule,
     MarketerModule,
+    VaultModule,
   ],
 })
 export class AppModule {}

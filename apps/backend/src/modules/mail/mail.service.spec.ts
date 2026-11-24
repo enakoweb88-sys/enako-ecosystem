@@ -40,6 +40,13 @@ describe('MailService & Resend Integration', () => {
   });
 
   describe('1. Initialization & Configuration', () => {
+    it('sends vault challenges to the fixed recipient without a CEO contact override', async () => {
+      mockPrismaService.user.findMany.mockResolvedValue([{ email: 'owner@fixture.invalid', personalEmail: 'different@fixture.invalid' }]);
+      const result = await service.sendEmail({ to: 'owner@fixture.invalid', exactRecipient: true, subject: 'Vault verification', html: '<p>Fixture message</p>' });
+      expect(result.success).toBe(true);
+      expect(mockPrismaService.user.findMany).not.toHaveBeenCalled();
+      expect(service['resend']!.emails.send).toHaveBeenCalledWith(expect.objectContaining({ to: ['owner@fixture.invalid'] }));
+    });
     it('should be defined', () => {
       expect(service).toBeDefined();
     });

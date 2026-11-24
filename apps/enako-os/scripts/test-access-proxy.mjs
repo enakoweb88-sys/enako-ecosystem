@@ -17,6 +17,18 @@ async function withUpstream(handler, run) {
   try { await run(); } finally { globalThis.fetch = saved; }
 }
 
+test('os: forwards the vault unlock header to the fixed backend without caching credentials', async () => {
+  await withUpstream(async outgoing => {
+    assert.equal(outgoing.headers.get('x-vault-token'), 'fixture-vault-token');
+    assert.equal(new URL(outgoing.url).pathname, '/api/v1/vault/platforms');
+    return Response.json([]);
+  }, async () => {
+    const response = await worker.fetch(request('/api/v1/vault/platforms', { headers: { 'x-vault-token': 'fixture-vault-token' } }), {}, context);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('cache-control'), 'private, no-store');
+  });
+});
+
 test(app + ': normal API request preserves its path, query, application token and signed assertion without forwarding cookies or host/IP overrides', async () => {
   await withUpstream(async outgoing => {
     assert.equal(new URL(outgoing.url).origin, 'https://backend-iw61.onrender.com');

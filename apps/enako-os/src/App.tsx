@@ -30,6 +30,7 @@ import Investments from './pages/Investments';
 import KpiManagement from './pages/KpiManagement';
 import DashboardLayout from './layouts/DashboardLayout';
 import WebsitesPage from './pages/WebsitesPage';
+import PasswordsAndKeys from './pages/PasswordsAndKeys';
 
 // Digital Marketing Pages
 import SocialAccounts from './pages/marketing/SocialAccounts';
@@ -98,6 +99,7 @@ export default function App() {
           >
             <Route index element={<Navigate to="/app/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
+            <Route path="passwords-and-keys" element={<PasswordsAndKeys />} />
             <Route path="marketer/leads" element={<MarketerLeads />} />
             <Route path="marketer/territory" element={<MarketerTerritory />} />
             <Route path="marketer/performance" element={<MarketerPerformance />} />
@@ -134,7 +136,7 @@ export default function App() {
             <Route
               path="employees"
               element={
-                <ProtectedRoute roles={['CEO', 'MANAGER']}>
+                <ProtectedRoute roles={['CEO', 'CTO', 'MANAGER']}>
                   <Employees />
                 </ProtectedRoute>
               }
@@ -142,7 +144,7 @@ export default function App() {
             <Route
               path="employees/:employeeId"
               element={
-                <ProtectedRoute roles={['CEO', 'MANAGER']}>
+                <ProtectedRoute roles={['CEO', 'CTO', 'MANAGER']}>
                   <Employees />
                 </ProtectedRoute>
               }
@@ -150,7 +152,7 @@ export default function App() {
             <Route
               path="employees/new"
               element={
-                <ProtectedRoute roles={['CEO', 'MANAGER']}>
+                <ProtectedRoute roles={['CEO', 'CTO', 'MANAGER']}>
                   <CreateEmployeePage />
                 </ProtectedRoute>
               }
@@ -158,7 +160,7 @@ export default function App() {
             <Route
               path="employees/departments"
               element={
-                <ProtectedRoute roles={['CEO', 'MANAGER']}>
+                <ProtectedRoute roles={['CEO', 'CTO', 'MANAGER']}>
                   <DepartmentsPage />
                 </ProtectedRoute>
               }
@@ -166,7 +168,7 @@ export default function App() {
             <Route
               path="employees/deploy"
               element={
-                <ProtectedRoute roles={['CEO', 'MANAGER']}>
+                <ProtectedRoute roles={['CEO', 'CTO', 'MANAGER']}>
                   <DepartmentsPage />
                 </ProtectedRoute>
               }

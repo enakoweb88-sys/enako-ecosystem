@@ -1,6 +1,8 @@
 import { EmailSenderType } from './mail.constants';
 
 export interface SendEmailOptions {
+  /** Security challenges must use the configured address without contact overrides. */
+  exactRecipient?: boolean;
   to: string | string[];
   subject: string;
   html: string;
